@@ -12,7 +12,7 @@
 #define ZOMBIE_CHAR 'Z'
 #define ITEM_CHAR '!'
 #define MAX_ZOMBIES 10
-#define NUM_ZOMBIES 10
+#define NUM_ZOMBIES 12
 #define EMPTY_CHAR ' '
 #define DIRECTION_UP 4
 #define DIRECTION_RIGHT 1
@@ -44,7 +44,6 @@ typedef struct {
 } Map;
 
 
-
 void init_map(Map *map) {
     int i, j;
     for (i = 0; i < MAP_SIZE; i++) {
@@ -67,15 +66,17 @@ void print_map(Map *map) {
         for (int j = 0; j < MAP_SIZE; j++) {
             Point point = map->points[i][j];
             if (i == map->player_x && j == map->player_y) {
-                attron(A_BOLD);
+                attron(A_STANDOUT);
                 printw("%c", PLAYER_CHAR);
-                attroff(A_BOLD);
+                attroff(A_STANDOUT);
             } else if (point.type == WALL_CHAR) {
                 printw("%c", WALL_CHAR);
             } else if (point.type == END_CHAR) {
                 printw("%c", END_CHAR);
             } else if (point.type == ZOMBIE_CHAR) {
+                attron(A_VERTICAL);
                 printw("%c", ZOMBIE_CHAR);
+                attroff(A_VERTICAL);
             } else {
                 printw("%c", EMPTY_CHAR);
             }
@@ -280,7 +281,13 @@ int check_goal(Map *map) {
 }
 
 // Free the memory used by the map
-void free_map(Map *map) { free(map); }
+void free_map(Map *map) {
+    for (int i = 0; i < MAP_SIZE; i++) {
+        free(map->points[i]);
+    }
+    free(map->points);
+}
+
 
 void exit_game(void) {
     endwin();
@@ -290,6 +297,7 @@ void exit_game(void) {
 
 int main() {
     initscr();
+    start_color();
 
     // Seed the random number generator
     srand(time(NULL));
@@ -327,7 +335,9 @@ int main() {
                     printw("Play again? (y/n)\n");
                     int play_again = getch();
                     if (play_again == 'y') {
-                        break; // Break out of inner loop to restart game
+                        // Free the map and break out of inner loop to restart game
+                        // free_map(&map);
+                        break;
                     } else {
                         exit_game();
                     }
@@ -347,7 +357,9 @@ int main() {
                     printw("Play again? (y/n)\n");
                     int play_again = getch();
                     if (play_again == 'y') {
-                        break; // Break out of inner loop to restart game
+                        // Free the map and break out of inner loop to restart game
+                        // free_map(&map);
+                        break;
                     } else {
                         exit_game();
                     }
@@ -361,9 +373,9 @@ int main() {
             }
         }
 
-        //free_map(&map);
     }
 
     endwin();
     return 0;
 }
+
