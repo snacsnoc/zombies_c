@@ -17,6 +17,12 @@
 #define DIRECTION_RIGHT 1
 #define DIRECTION_DOWN 2
 #define DIRECTION_LEFT 3
+#define ESC_CHAR 27
+#define LEFT_CHAR 68
+#define RIGHT_CHAR 67
+#define UP_CHAR 65
+#define DOWN_CHAR 66
+
 
 // Get the terminals original attributes
 struct termios original_term;
@@ -197,6 +203,44 @@ void move_zombies(Map *map) {
   }
 }
 
+
+int get_arrow_keys() {
+    char buf = 0;
+    int direction = 0;
+
+    if (read(STDIN_FILENO, &buf, 1) == -1) {
+        perror("read");
+        exit(1);
+    }
+
+    // Escape
+    if (buf == 27 && read(STDIN_FILENO, &buf, 1) == -1) {
+        perror("read");
+        exit(1);
+    }
+    // [
+    if (buf == 91 && read(STDIN_FILENO, &buf, 1) == -1) {
+        perror("read");
+        exit(1);
+    }
+
+    // Move the player, otherwise return the buffer
+    if (buf == 65) {
+        direction = DIRECTION_UP;
+    } else if (buf == 67) {
+        direction = DIRECTION_RIGHT;
+    } else if (buf == 66) {
+        direction = DIRECTION_DOWN;
+    } else if (buf == 68) {
+        direction = DIRECTION_LEFT;
+    } else {
+        direction = (unsigned char)buf;
+    }
+
+    return direction;
+}
+
+
 // Check if the player has collided with any zombies
 int check_collision(Map *map) {
   for (int i = 0; i < map->num_zombies; i++) {
@@ -236,7 +280,7 @@ void set_terminal_raw_mode() {
 }
 
 int main() {
-    printf("Enter direction (0 = up, 1 = right, 2 = down, 3 = left) \n\n");
+    printf("Use arrow keys to move, q to quit\n\n");
 
     srand(time(NULL)); // Seed the random number generator
     Map map;
@@ -249,61 +293,43 @@ int main() {
 
     // Save original terminal attributes
     tcgetattr(0, &original_term);
-    // Set up non-blocking input 
+    // Set up non-blocking input
     set_terminal_raw_mode();
 
     while (1) {
-
         // Read input without blocking
-        char direction = 0;
-        if (read(STDIN_FILENO, &direction, 1) == -1) {
-            perror("read");
-            exit(1);
-        }
-
-        // Convert the input character to a direction value
-        switch (direction) {
-            case '0':
-                direction = DIRECTION_UP;
-                break;
-            case '1':
-                direction = DIRECTION_RIGHT;
-                break;
-            case '2':
-                direction = DIRECTION_DOWN;
-                break;
-            case '3':
-                direction = DIRECTION_LEFT;
-                break;
-            default:
-                // Invalid input
-                printf("Invalid input\n");
-                continue;
-        }
+        int direction = get_arrow_keys();
 
         // Move the player
-        int result = move_player(&map, direction);
-        if (result == 0) {
-            printf("Invalid move\n");
+        if (direction != 0) {
+            int result = move_player(&map, direction);
+            if (result == 0) {
+                printf("Invalid move\n");
+            }
+
+            // Check if the game is over
+            if (check_goal(&map)) {
+                printf("You win!\n");
+                exit_game();
+                break;
+            }
+
+            // Move the zombies
+            move_zombies(&map);
+
+            // Print the map
+            print_map(&map);
+
+            if (check_collision(&map)) {
+                printf("You lose!\n");
+                exit_game();
+                break;
+            }
         }
 
-        // printf("New cell type: %c\n", map.points[map.player_x][map.player_y].type);
-
-        // Check if the game is over
-        if (check_goal(&map)) {
-            printf("You win!\n");
-            exit_game();
-            break;
-        }
-
-        // Move the zombies
-        move_zombies(&map);
-
-        // Print the map
-        print_map(&map);
-
-        if (check_collision(&map)) {
-            printf("You lose!\n");
+        // Quit the game if q is pressed
+        if (direction == 'q') {
+            printf("Quitting game...\n");
             exit_game();
             break;
         }
