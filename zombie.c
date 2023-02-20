@@ -62,21 +62,35 @@ void print_map(Map *map) {
     move(0, 0);
     printw("Score: %d\n", score);
 
+    init_pair(1, COLOR_WHITE, COLOR_BLACK); // white walls
+    init_pair(2, COLOR_GREEN, COLOR_BLACK); // green zombies
+    init_pair(3, COLOR_YELLOW, COLOR_BLACK); // yellow end
+    init_pair(4, COLOR_BLUE, COLOR_BLACK); // blue player
+
+
     for (int i = 0; i < MAP_SIZE; i++) {
         for (int j = 0; j < MAP_SIZE; j++) {
             Point point = map->points[i][j];
             if (i == map->player_x && j == map->player_y) {
                 attron(A_STANDOUT);
+                attron(COLOR_PAIR(4));
                 printw("%c", PLAYER_CHAR);
+                attron(COLOR_PAIR(4));
                 attroff(A_STANDOUT);
             } else if (point.type == WALL_CHAR) {
+                attron(A_BOLD);
+                attron(COLOR_PAIR(1));
                 printw("%c", WALL_CHAR);
+                attroff(COLOR_PAIR(1));
+                attroff(A_BOLD);
             } else if (point.type == END_CHAR) {
+                attron(COLOR_PAIR(3));
                 printw("%c", END_CHAR);
+                attroff(COLOR_PAIR(3));
             } else if (point.type == ZOMBIE_CHAR) {
-                attron(A_VERTICAL);
+                attron(COLOR_PAIR(2));
                 printw("%c", ZOMBIE_CHAR);
-                attroff(A_VERTICAL);
+                attroff(COLOR_PAIR(2));
             } else {
                 printw("%c", EMPTY_CHAR);
             }
