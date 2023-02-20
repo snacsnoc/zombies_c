@@ -195,12 +195,25 @@ int move_player(Map *map, int direction) {
 }
 
 // Move all the zombies on the map one step closer to the player
+// Zombies eat one another if on the same x y
 void move_zombies(Map *map) {
     for (int i = 0; i < map->num_zombies; i++) {
         int old_x = map->zombie_x[i];
         int old_y = map->zombie_y[i];
         int new_x = old_x;
         int new_y = old_y;
+        int eaten_zombie = -1;
+
+        // Check if this zombie collides with another zombie
+        for (int j = 0; j < map->num_zombies; j++) {
+            if (i == j) {
+                continue;
+            }
+            if (map->zombie_x[j] == new_x && map->zombie_y[j] == new_y) {
+                eaten_zombie = j;
+                break;
+            }
+        }
 
         // Move the zombie closer to the player's X position
         if (map->player_x < old_x) {
@@ -232,9 +245,15 @@ void move_zombies(Map *map) {
         map->zombie_x[i] = new_x;
         map->zombie_y[i] = new_y;
         map->points[new_x][new_y].type = ZOMBIE_CHAR;
+
+        // If this zombie ate another zombie, remove the eaten zombie from the map
+        if (eaten_zombie != -1) {
+            map->zombie_x[eaten_zombie] = -1;
+            map->zombie_y[eaten_zombie] = -1;
+            map->num_zombies--;
+        }
     }
 }
-
 
 int get_arrow_keys() {
     char buf = 0;
@@ -388,8 +407,5 @@ int main() {
         }
 
     }
-
-    endwin();
-    return 0;
 }
 
