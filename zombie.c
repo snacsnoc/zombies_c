@@ -18,13 +18,15 @@
 #define DIRECTION_DOWN 2
 #define DIRECTION_LEFT 3
 
+// Get the terminals original attributes
+struct termios original_term;
+
+
 typedef struct {
   char type;   // Type of point on the map ('#' for wall, 'P' for player, etc.)
   int visited; // Flag indicating whether the point has been visited by the
                // player
-}
-
-Point;
+} Point;
 
 typedef struct {
   Point points[MAP_SIZE][MAP_SIZE];
@@ -35,9 +37,7 @@ typedef struct {
   int num_zombies;
   int zombie_x[MAX_ZOMBIES];
   int zombie_y[MAX_ZOMBIES];
-}
-
-Map;
+} Map;
 
 void init_map(Map *map) {
   int i, j;
@@ -221,7 +221,9 @@ int check_goal(Map *map) {
 void free_map(Map *map) { free(map); }
 
 void exit_game(void){
-  exit(1);
+    // Restore terminal to original state
+    tcsetattr(0, TCSANOW, &original_term);
+    exit(1);
 }
 
 
@@ -245,6 +247,8 @@ int main() {
     place_zombies(&map, NUM_ZOMBIES);
     print_map(&map);
 
+    // Save original terminal attributes
+    tcgetattr(0, &original_term);
     // Set up non-blocking input 
     set_terminal_raw_mode();
 
