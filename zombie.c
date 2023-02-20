@@ -5,7 +5,7 @@
 #include <ncurses.h>
 
 
-#define MAP_SIZE 36
+#define MAP_SIZE 32
 #define WALL_CHAR '#'
 #define PLAYER_CHAR 'P'
 #define END_CHAR 'E'
@@ -24,6 +24,8 @@
 #define UP_CHAR 65
 #define DOWN_CHAR 66
 
+int score = 0;
+
 typedef struct {
     char type;   // Type of point on the map ('#' for wall, 'P' for player, etc.)
     int visited; // Flag indicating whether the point has been visited by the
@@ -41,6 +43,8 @@ typedef struct {
     int zombie_y[MAX_ZOMBIES];
 } Map;
 
+
+
 void init_map(Map *map) {
     int i, j;
     for (i = 0; i < MAP_SIZE; i++) {
@@ -55,11 +59,17 @@ void init_map(Map *map) {
 
 void print_map(Map *map) {
     clear(); // Clear the screen
+    // Print the score at the top-left corner
+    move(0, 0);
+    printw("Score: %d\n", score);
+
     for (int i = 0; i < MAP_SIZE; i++) {
         for (int j = 0; j < MAP_SIZE; j++) {
             Point point = map->points[i][j];
             if (i == map->player_x && j == map->player_y) {
+                attron(A_BOLD);
                 printw("%c", PLAYER_CHAR);
+                attroff(A_BOLD);
             } else if (point.type == WALL_CHAR) {
                 printw("%c", WALL_CHAR);
             } else if (point.type == END_CHAR) {
@@ -281,56 +291,79 @@ void exit_game(void) {
 int main() {
     initscr();
 
-    printw("Use arrow keys to move, q to quit\n\n");
+    // Seed the random number generator
+    srand(time(NULL));
 
-    srand(time(NULL)); // Seed the random number generator
-    Map map;
-    init_map(&map);
-    place_walls(&map);
-    place_player(&map);
-    place_goal(&map);
-    place_zombies(&map, NUM_ZOMBIES);
-    print_map(&map);
-
+    // Main game loop
     while (1) {
-        // Read input without blocking
-        int direction = get_arrow_keys();
+        // Print instructions and set up the map
+        printw("Use arrow keys to move, q to quit\n\n");
+        Map map;
+        init_map(&map);
+        place_walls(&map);
+        place_player(&map);
+        place_goal(&map);
+        place_zombies(&map, NUM_ZOMBIES);
+        print_map(&map);
 
-        // Move the player
-        if (direction != 0) {
-            int result = move_player(&map, direction);
-            if (result == 0) {
-                printw("Invalid move\n");
+        // Game loop
+        while (1) {
+            // Read input
+            int direction = get_arrow_keys();
+
+            // Move the player
+            if (direction != 0) {
+                int result = move_player(&map, direction);
+                if (result == 0) {
+                    printw("Invalid move\n");
+                }
+
+                // Check if the game is over
+                if (check_goal(&map)) {
+                    score = score + 1;
+                    printw("You win!\n");
+
+                    // Prompt user to play again
+                    printw("Play again? (y/n)\n");
+                    int play_again = getch();
+                    if (play_again == 'y') {
+                        break; // Break out of inner loop to restart game
+                    } else {
+                        exit_game();
+                    }
+                }
+
+                // Move the zombies
+                move_zombies(&map);
+
+                // Print the map
+                print_map(&map);
+
+                if (check_collision(&map)) {
+                    score = score - 1;
+                    printw("You lose!\n");
+
+                    // Prompt user to play again
+                    printw("Play again? (y/n)\n");
+                    int play_again = getch();
+                    if (play_again == 'y') {
+                        break; // Break out of inner loop to restart game
+                    } else {
+                        exit_game();
+                    }
+                }
             }
 
-            // Check if the game is over
-            if (check_goal(&map)) {
-                printw("You win!\n");
+            // Quit the game if q is pressed
+            if (direction == 'q') {
+                printw("Quitting game...\n");
                 exit_game();
-                break;
-            }
-
-            // Move the zombies
-            move_zombies(&map);
-
-            // Print the map
-            print_map(&map);
-
-            if (check_collision(&map)) {
-                printw("You lose!\n");
-                exit_game();
-                break;
             }
         }
 
-        // Quit the game if q is pressed
-        if (direction == 'q') {
-            printw("Quitting game...\n");
-            exit_game();
-            break;
-        }
+        //free_map(&map);
     }
-    endwin();
 
+    endwin();
     return 0;
 }
