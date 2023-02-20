@@ -15,7 +15,7 @@
 #define ITEM_CHAR '!'
 #define MAX_ZOMBIES 10
 #define NUM_ZOMBIES 1
-#define EMPTY_CHAR '.'
+#define EMPTY_CHAR ' '
 #define DIRECTION_UP 4
 #define DIRECTION_RIGHT 1
 #define DIRECTION_DOWN 2
@@ -290,7 +290,8 @@ void free_map(Map *map) { free(map); }
 
 void exit_game(void){
     // Restore terminal to original state
-    tcsetattr(0, TCSANOW, &original_term);
+    //tcsetattr(0, TCSANOW, &original_term);
+    endwin();
     exit(1);
 }
 
@@ -318,9 +319,9 @@ int main() {
     nc_print_map(&map);
 
     // Save original terminal attributes
-    tcgetattr(0, &original_term);
+    // tcgetattr(0, &original_term);
     // Set up non-blocking input
-    set_terminal_raw_mode();
+    //set_terminal_raw_mode();
 
     while (1) {
         // Read input without blocking
@@ -360,6 +361,7 @@ int main() {
             break;
         }
     }
+    endwin();
 
     return 0;
 }
