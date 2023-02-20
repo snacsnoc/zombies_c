@@ -1,5 +1,7 @@
 Run away from the zombies and reach the end
 
-
+Use the arrow keys to move the player.
 # Build
-`cc zombie.c -o zombie.out`
+```bash
+make all
+```
