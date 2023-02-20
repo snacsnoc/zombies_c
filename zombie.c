@@ -5,14 +5,14 @@
 #include <ncurses.h>
 
 
-#define MAP_SIZE 32
+#define MAP_SIZE 24
 #define WALL_CHAR '#'
 #define PLAYER_CHAR 'P'
 #define END_CHAR 'E'
 #define ZOMBIE_CHAR 'Z'
 #define ITEM_CHAR '!'
 #define MAX_ZOMBIES 10
-#define NUM_ZOMBIES 12
+#define NUM_ZOMBIES 6
 #define EMPTY_CHAR ' '
 #define DIRECTION_UP 4
 #define DIRECTION_RIGHT 1
