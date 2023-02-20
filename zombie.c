@@ -13,7 +13,7 @@
 #define MAX_ZOMBIES 10
 #define NUM_ZOMBIES 1
 #define EMPTY_CHAR '.'
-#define DIRECTION_UP 0
+#define DIRECTION_UP 4
 #define DIRECTION_RIGHT 1
 #define DIRECTION_DOWN 2
 #define DIRECTION_LEFT 3
