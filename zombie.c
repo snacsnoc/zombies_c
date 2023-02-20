@@ -3,6 +3,9 @@
 #include <time.h>
 #include <termios.h>
 #include <unistd.h>
+#include <ncurses.h>
+
+
 
 #define MAP_SIZE 16
 #define WALL_CHAR '#'
@@ -66,6 +69,27 @@ void print_map(Map *map) {
 
     printf("\n");
   }
+}
+void nc_print_map(Map *map) {
+    clear(); // Clear the screen
+    for (int i = 0; i < MAP_SIZE; i++) {
+        for (int j = 0; j < MAP_SIZE; j++) {
+            Point point = map->points[i][j];
+            if (i == map->player_x && j == map->player_y) {
+                printw("%c", PLAYER_CHAR);
+            } else if (point.type == WALL_CHAR) {
+                printw("%c", WALL_CHAR);
+            } else if (point.type == END_CHAR) {
+                printw("%c", END_CHAR);
+            } else if (point.type == ZOMBIE_CHAR) {
+                printw("%c", ZOMBIE_CHAR);
+            } else {
+                printw("%c", EMPTY_CHAR);
+            }
+        }
+        printw("\n"); // Move to the next row
+    }
+    refresh(); // Update the screen
 }
 
 void place_walls(Map *map) {
@@ -280,7 +304,9 @@ void set_terminal_raw_mode() {
 }
 
 int main() {
-    printf("Use arrow keys to move, q to quit\n\n");
+    initscr();
+
+    printw("Use arrow keys to move, q to quit\n\n");
 
     srand(time(NULL)); // Seed the random number generator
     Map map;
@@ -289,7 +315,7 @@ int main() {
     place_player(&map);
     place_goal(&map);
     place_zombies(&map, NUM_ZOMBIES);
-    print_map(&map);
+    nc_print_map(&map);
 
     // Save original terminal attributes
     tcgetattr(0, &original_term);
@@ -304,12 +330,12 @@ int main() {
         if (direction != 0) {
             int result = move_player(&map, direction);
             if (result == 0) {
-                printf("Invalid move\n");
+                printw("Invalid move\n");
             }
 
             // Check if the game is over
             if (check_goal(&map)) {
-                printf("You win!\n");
+                printw("You win!\n");
                 exit_game();
                 break;
             }
@@ -318,10 +344,10 @@ int main() {
             move_zombies(&map);
 
             // Print the map
-            print_map(&map);
+            nc_print_map(&map);
 
             if (check_collision(&map)) {
-                printf("You lose!\n");
+                printw("You lose!\n");
                 exit_game();
                 break;
             }
@@ -329,7 +355,7 @@ int main() {
 
         // Quit the game if q is pressed
         if (direction == 'q') {
-            printf("Quitting game...\n");
+            printw("Quitting game...\n");
             exit_game();
             break;
         }
