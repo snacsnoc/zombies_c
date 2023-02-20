@@ -225,13 +225,13 @@ int get_arrow_keys() {
     }
 
     // Move the player, otherwise return the buffer
-    if (buf == 65) {
+    if (buf == UP_CHAR) {
         direction = DIRECTION_UP;
-    } else if (buf == 67) {
+    } else if (buf == RIGHT_CHAR) {
         direction = DIRECTION_RIGHT;
-    } else if (buf == 66) {
+    } else if (buf == DOWN_CHAR) {
         direction = DIRECTION_DOWN;
-    } else if (buf == 68) {
+    } else if (buf == LEFT_CHAR) {
         direction = DIRECTION_LEFT;
     } else {
         direction = (unsigned char)buf;
