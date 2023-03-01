@@ -59,6 +59,17 @@ void init_map(Map *map) {
 }
 
 void print_map(Map *map) {
+    int i, j;
+    for (i = 0; i < MAP_SIZE; i++) {
+        for (j = 0; j < MAP_SIZE; j++) {
+            printf("%c", map->points[i][j].type);
+        }
+
+        printf("\n");
+    }
+}
+
+void nc_print_map(Map *map) {
     clear(); // Clear the screen
     // Print the score at the top-left corner
     move(0, 0);
@@ -355,7 +366,7 @@ int main() {
         place_player(&map);
         place_goal(&map);
         place_zombies(&map, NUM_ZOMBIES);
-        print_map(&map);
+        nc_print_map(&map);
 
         // Game loop
         while (1) {
@@ -390,7 +401,7 @@ int main() {
                 move_zombies(&map);
 
                 // Print the map
-                print_map(&map);
+                nc_print_map(&map);
 
                 if (check_collision(&map)) {
                     score--;
