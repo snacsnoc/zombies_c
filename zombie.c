@@ -9,11 +9,13 @@
 #define WALL_CHAR '#'
 #define PLAYER_CHAR 'P'
 #define END_CHAR 'E'
-#define ZOMBIE_CHAR 'Z'
+#define ZOMBIE_CHAR 'z'
+#define BIG_ZOMBIE_CHAR 'Z'
 #define ITEM_CHAR '!'
 #define MAX_ZOMBIES 10
 #define NUM_ZOMBIES 6
 #define EMPTY_CHAR ' '
+#define TRAIL_CHAR '.'
 #define DIRECTION_UP 4
 #define DIRECTION_RIGHT 1
 #define DIRECTION_DOWN 2
@@ -186,7 +188,7 @@ int move_player(Map *map, int direction) {
         return 0; // Can't move into a wall
     }
 
-    map->points[map->player_x][map->player_y].type = EMPTY_CHAR;
+    map->points[map->player_x][map->player_y].type = TRAIL_CHAR; // set the old point to TRAIL_CHAR
     map->player_x = new_x;
     map->player_y = new_y;
     map->points[new_x][new_y].type = PLAYER_CHAR;
@@ -241,16 +243,24 @@ void move_zombies(Map *map) {
             continue; // Can't move into a wall
         }
 
+        if (map->points[new_x][new_y].type == END_CHAR) {
+            continue; // Can't move into end goal
+        }
         map->points[old_x][old_y].type = EMPTY_CHAR;
         map->zombie_x[i] = new_x;
         map->zombie_y[i] = new_y;
-        map->points[new_x][new_y].type = ZOMBIE_CHAR;
 
         // If this zombie ate another zombie, remove the eaten zombie from the map
         if (eaten_zombie != -1) {
+            map->points[map->zombie_x[eaten_zombie]][map->zombie_y[eaten_zombie]].type = EMPTY_CHAR;
             map->zombie_x[eaten_zombie] = -1;
             map->zombie_y[eaten_zombie] = -1;
             map->num_zombies--;
+            // Change zombie to big zombie
+            map->points[map->zombie_x[i]][map->zombie_y[i]].type = BIG_ZOMBIE_CHAR;
+        } else {
+            map->points[new_x][new_y].type = ZOMBIE_CHAR;
+
         }
     }
 }
@@ -361,7 +371,7 @@ int main() {
 
                 // Check if the game is over
                 if (check_goal(&map)) {
-                    score = score + 1;
+                    score++;
                     printw("You win!\n");
 
                     // Prompt user to play again
@@ -383,7 +393,7 @@ int main() {
                 print_map(&map);
 
                 if (check_collision(&map)) {
-                    score = score - 1;
+                    score--;
                     printw("You lose!\n");
 
                     // Prompt user to play again
