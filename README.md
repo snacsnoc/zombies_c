@@ -5,3 +5,7 @@ Use the arrow keys to move the player. Use ncurses.
 ```bash
 make all
 ```
+No ncurses:
+```bash
+make no-curses
+```
