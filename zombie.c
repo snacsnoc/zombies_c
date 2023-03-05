@@ -1,11 +1,8 @@
+#include <ncurses.h>
 #include <stdio.h>
-
 #include <stdlib.h>
-
 #include <time.h>
-
 #include <unistd.h>
-
 
 #define MAP_SIZE 24
 #define WALL_CHAR '#'
@@ -31,7 +28,7 @@
 int score = 0;
 
 typedef struct {
-    char type; // Type of point on the map ('#' for wall, 'P' for player, etc.)
+    char type;   // Type of point on the map ('#' for wall, 'P' for player, etc.)
     int visited; // Flag indicating whether the point has been visited by the
     // player
 } Point;
@@ -59,67 +56,53 @@ void init_map(Map *map) {
     map->num_zombies = 0;
 }
 // Determine how we're printing to screen
-#ifdef USE_NCURSES
-#include <ncurses.h>
-
-#define PRINT(msg) printw(msg)
-void print_map(Map * map) {
-  clear(); // Clear the screen
-  // Print the score at the top-left corner
-  move(0, 0);
-  printw("Score: %d\n", score);
-
-  init_pair(1, COLOR_WHITE, COLOR_BLACK); // white walls
-  init_pair(2, COLOR_GREEN, COLOR_BLACK); // green zombies
-  init_pair(3, COLOR_YELLOW, COLOR_BLACK); // yellow end
-  init_pair(4, COLOR_BLUE, COLOR_BLACK); // blue player
-
-  for (int i = 0; i < MAP_SIZE; i++) {
-    for (int j = 0; j < MAP_SIZE; j++) {
-      Point point = map -> points[i][j];
-      if (i == map -> player_x && j == map -> player_y) {
-        attron(A_STANDOUT);
-        attron(COLOR_PAIR(4));
-        printw("%c", PLAYER_CHAR);
-        attron(COLOR_PAIR(4));
-        attroff(A_STANDOUT);
-      } else if (point.type == WALL_CHAR) {
-        attron(A_BOLD);
-        attron(COLOR_PAIR(1));
-        printw("%c", WALL_CHAR);
-        attroff(COLOR_PAIR(1));
-        attroff(A_BOLD);
-      } else if (point.type == END_CHAR) {
-        attron(COLOR_PAIR(3));
-        printw("%c", END_CHAR);
-        attroff(COLOR_PAIR(3));
-      } else if (point.type == ZOMBIE_CHAR) {
-        attron(COLOR_PAIR(2));
-        printw("%c", ZOMBIE_CHAR);
-        attroff(COLOR_PAIR(2));
-      } else {
-        printw("%c", EMPTY_CHAR);
-      }
-    }
-    printw("\n"); // Move to the next row
-  }
-  refresh(); // Update the screen
-}
-#else
-#define PRINT(msg) printf(msg)
 
 void print_map(Map *map) {
-    int i, j;
-    for (i = 0; i < MAP_SIZE; i++) {
-        for (j = 0; j < MAP_SIZE; j++) {
-            printf("%c", map->points[i][j].type);
+    clear(); // Clear the screen
+    // Print the score at the top-left corner
+    move(0, 0);
+    printw("Score: %d\n", score);
+
+    init_pair(1, COLOR_WHITE, COLOR_BLACK);  // white walls
+    init_pair(2, COLOR_GREEN, COLOR_BLACK);  // green zombies
+    init_pair(3, COLOR_YELLOW, COLOR_BLACK); // yellow end
+    init_pair(4, COLOR_BLUE, COLOR_BLACK);   // blue player
+
+    for (int i = 0; i < MAP_SIZE; i++) {
+        for (int j = 0; j < MAP_SIZE; j++) {
+            Point point = map->points[i][j];
+            if (i == map->player_x && j == map->player_y) {
+                attron(A_STANDOUT);
+                attron(COLOR_PAIR(4));
+                printw("%c", PLAYER_CHAR);
+                attron(COLOR_PAIR(4));
+                attroff(A_STANDOUT);
+            } else if (point.type == WALL_CHAR) {
+                attron(A_BOLD);
+                attron(COLOR_PAIR(1));
+                printw("%c", WALL_CHAR);
+                attroff(COLOR_PAIR(1));
+                attroff(A_BOLD);
+            } else if (point.type == END_CHAR) {
+                attron(COLOR_PAIR(3));
+                printw("%c", END_CHAR);
+                attroff(COLOR_PAIR(3));
+            } else if (point.type == ZOMBIE_CHAR) {
+                attron(COLOR_PAIR(2));
+                printw("%c", ZOMBIE_CHAR);
+                attroff(COLOR_PAIR(2));
+            } else if (point.type == BIG_ZOMBIE_CHAR) {
+                attron(COLOR_PAIR(2));
+                printw("%c", BIG_ZOMBIE_CHAR);
+                attroff(COLOR_PAIR(2));
+            } else {
+                printw("%c", EMPTY_CHAR);
+            }
         }
-
-        printf("\n");
+        printw("\n"); // Move to the next row
     }
+    refresh(); // Update the screen
 }
-
-#endif
 
 void place_walls(Map *map) {
     int i, j;
@@ -207,7 +190,8 @@ int move_player(Map *map, int direction) {
         return 0; // Can't move into a wall
     }
 
-    map->points[map->player_x][map->player_y].type = TRAIL_CHAR; // set the old point to TRAIL_CHAR
+    map->points[map->player_x][map->player_y].type =
+            TRAIL_CHAR; // set the old point to TRAIL_CHAR
     map->player_x = new_x;
     map->player_y = new_y;
     map->points[new_x][new_y].type = PLAYER_CHAR;
@@ -270,18 +254,18 @@ void move_zombies(Map *map) {
         map->zombie_y[i] = new_y;
 
         // If this zombie ate another zombie, remove the eaten zombie from the map
-        //TODO: zombie can get frozen somehow after eating
+        // TODO: zombie can get frozen somehow after eating
         if (eaten_zombie != -1) {
-            map->points[map->zombie_x[eaten_zombie]][map->zombie_y[eaten_zombie]].type = EMPTY_CHAR;
+            map->points[map->zombie_x[eaten_zombie]][map->zombie_y[eaten_zombie]]
+                    .type = EMPTY_CHAR;
             map->zombie_x[eaten_zombie] = -1;
             map->zombie_y[eaten_zombie] = -1;
             map->num_zombies--;
             // Change zombie to big zombie
-            //TODO: fix this
+            // TODO: fix this
             map->points[map->zombie_x[i]][map->zombie_y[i]].type = BIG_ZOMBIE_CHAR;
         } else {
             map->points[new_x][new_y].type = ZOMBIE_CHAR;
-
         }
     }
 }
@@ -316,7 +300,7 @@ int get_arrow_keys() {
     } else if (buf == LEFT_CHAR) {
         direction = DIRECTION_LEFT;
     } else {
-        direction = (unsigned char) buf;
+        direction = (unsigned char)buf;
     }
 
     return direction;
@@ -335,7 +319,7 @@ int check_collision(Map *map) {
 }
 
 void check_item(Map *map) {
-    //return map->points[map->player_x][map->player_y].type == ITEM_CHAR;
+    // return map->points[map->player_x][map->player_y].type == ITEM_CHAR;
 }
 
 // Check if the player has reached the end of the map
@@ -352,17 +336,14 @@ void free_map(Map *map) {
 }
 
 void exit_game(void) {
-#ifdef USE_NCURSES
     endwin();
-#endif
     exit(1);
 }
 
 int main() {
-#ifdef USE_NCURSES
+
     initscr();
-  start_color();
-#endif
+    start_color();
 
     // Seed the random number generator
     srand(time(NULL));
@@ -370,7 +351,7 @@ int main() {
     // Main game loop
     while (1) {
         // Print instructions and set up the map
-        PRINT("Use arrow keys to move, q to quit\n\n");
+        printw("Use arrow keys to move, q to quit\n\n");
         Map map;
         init_map(&map);
         place_walls(&map);
@@ -388,28 +369,16 @@ int main() {
             if (direction != 0) {
                 int result = move_player(&map, direction);
                 if (result == 0) {
-                    PRINT("Invalid move\n");
+                    printw("Invalid move\n");
                 }
 
                 // Check if the game is over
                 if (check_goal(&map)) {
                     score++;
-                    PRINT("You win!\n");
+                    printw("You win!\n");
 
-                #ifdef USE_NCURSES
-                    PRINT("Play again? (y/n)\n");
+                    printw("Play again? (y/n)\n");
                     int play_again = getch();
-                    if (play_again == 'y') {
-                    // Free the map and break out of inner loop to restart game
-                    // free_map(&map);
-                      break;
-                    } else {
-                      exit_game();
-                    }
-                #else
-                    char play_again;
-                    PRINT("Play again? (y/n)\n");
-                    scanf("%c", &play_again);
                     if (play_again == 'y') {
                         // Free the map and break out of inner loop to restart game
                         // free_map(&map);
@@ -417,7 +386,6 @@ int main() {
                     } else {
                         exit_game();
                     }
-                #endif
                 }
 
                 // Move the zombies
@@ -428,23 +396,12 @@ int main() {
 
                 if (check_collision(&map)) {
                     score--;
-                    PRINT("You lose!\n");
+                    printw("You lose!\n");
 
                     // Prompt user to play again
-#ifdef USE_NCURSES
-                    PRINT("Play again? (y/n)\n");
-          int play_again = getch();
-          if (play_again == 'y') {
-            // Free the map and break out of inner loop to restart game
-            // free_map(&map);
-            break;
-          } else {
-            exit_game();
-          }
-#else
-                    char play_again;
-                    PRINT("Play again? (y/n)\n");
-                    scanf("%c", &play_again);
+
+                    printw("Play again? (y/n)\n");
+                    int play_again = getch();
                     if (play_again == 'y') {
                         // Free the map and break out of inner loop to restart game
                         // free_map(&map);
@@ -452,17 +409,14 @@ int main() {
                     } else {
                         exit_game();
                     }
-#endif
-
                 }
             }
 
             // Quit the game if q is pressed
             if (direction == 'q') {
-                PRINT("Quitting game...\n");
+                printw("Quitting game...\n");
                 exit_game();
             }
         }
-
     }
 }
