@@ -95,6 +95,10 @@ void print_map(Map *map) {
                 attron(COLOR_PAIR(2));
                 printw("%c", BIG_ZOMBIE_CHAR);
                 attroff(COLOR_PAIR(2));
+            } else if (point.type == TRAIL_CHAR) {
+                attron(COLOR_PAIR(1));
+                printw("%c", TRAIL_CHAR);
+                attroff(COLOR_PAIR(1));
             } else {
                 printw("%c", EMPTY_CHAR);
             }
@@ -234,9 +238,9 @@ void move_zombies(Map *map) {
             new_y++;
         }
 
-        if (new_x == map->player_x && new_y == map->player_y) {
-            continue; // Don't move onto the player's square
-        }
+//        if (new_x == map->player_x && new_y == map->player_y) {
+//            continue; // Don't move onto the player's square
+//        }
 
         if (new_x < 0 || new_x >= MAP_SIZE || new_y < 0 || new_y >= MAP_SIZE) {
             continue; // Can't move outside the map
@@ -262,7 +266,6 @@ void move_zombies(Map *map) {
             map->zombie_y[eaten_zombie] = -1;
             map->num_zombies--;
             // Change zombie to big zombie
-            // TODO: fix this
             map->points[map->zombie_x[i]][map->zombie_y[i]].type = BIG_ZOMBIE_CHAR;
         } else {
             map->points[new_x][new_y].type = ZOMBIE_CHAR;
@@ -361,6 +364,7 @@ int main() {
         print_map(&map);
 
         // Game loop
+        int move_counter = 0;
         while (1) {
             // Read input
             int direction = get_arrow_keys();
@@ -388,8 +392,13 @@ int main() {
                     }
                 }
 
-                // Move the zombies
-                move_zombies(&map);
+                // Increment the move counter
+                move_counter++;
+
+                // Call move_zombies every second move
+                if (move_counter % 2 == 0) {
+                    move_zombies(&map);
+                }
 
                 // Print the map
                 print_map(&map);
