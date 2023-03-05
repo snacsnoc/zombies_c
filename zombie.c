@@ -64,7 +64,7 @@ void print_map(Map *map) {
     clear(); // Clear the screen
     // Print the score at the top-left corner
     move(0, 0);
-    printw("Score: %d  | Zombies: %d   |   Big Zombies: %d\n", score,map->num_zombies,map->num_big_zombies);
+    printw("Score: %d |  Zombies: %d |  Big Zombies: %d\n", score,map->num_zombies,map->num_big_zombies);
 
     init_pair(1, COLOR_WHITE, COLOR_BLACK);  // white walls
     init_pair(2, COLOR_GREEN, COLOR_BLACK);  // green zombies
@@ -273,16 +273,9 @@ void move_zombies(Map *map) {
             map->num_zombies--;
             map->num_big_zombies++;
             map->points[map->zombie_x[i]][map->zombie_y[i]].type = BIG_ZOMBIE_CHAR;
-            map->big_zombies[map->num_big_zombies] = i;
-            map->num_big_zombies++;
+            map->big_zombies[map->num_big_zombies - 1] = i;
         } else {
-            if (is_big_zombie) {
-                map->points[new_x][new_y].type = BIG_ZOMBIE_CHAR;
-
-            } else {
-                map->points[new_x][new_y].type = ZOMBIE_CHAR;
-
-            }
+            map->points[new_x][new_y].type = is_big_zombie ? BIG_ZOMBIE_CHAR : ZOMBIE_CHAR;
         }
     }
 }
