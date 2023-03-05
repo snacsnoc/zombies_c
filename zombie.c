@@ -42,6 +42,8 @@ typedef struct {
     int num_zombies;
     int zombie_x[MAX_ZOMBIES];
     int zombie_y[MAX_ZOMBIES];
+    int num_big_zombies;
+    int big_zombies[MAX_ZOMBIES];
 } Map;
 
 void init_map(Map *map) {
@@ -54,6 +56,7 @@ void init_map(Map *map) {
     }
 
     map->num_zombies = 0;
+    map->num_big_zombies = 0;
 }
 // Determine how we're printing to screen
 
@@ -61,7 +64,7 @@ void print_map(Map *map) {
     clear(); // Clear the screen
     // Print the score at the top-left corner
     move(0, 0);
-    printw("Score: %d\n", score);
+    printw("Score: %d  | Zombies: %d   |   Big Zombies: %d\n", score,map->num_zombies,map->num_big_zombies);
 
     init_pair(1, COLOR_WHITE, COLOR_BLACK);  // white walls
     init_pair(2, COLOR_GREEN, COLOR_BLACK);  // green zombies
@@ -204,7 +207,7 @@ int move_player(Map *map, int direction) {
 }
 
 // Move all the zombies on the map one step closer to the player
-// Zombies eat one another if on the same x y
+// Zombies eat one another if on the same x y and change characters
 void move_zombies(Map *map) {
     for (int i = 0; i < map->num_zombies; i++) {
         int old_x = map->zombie_x[i];
@@ -223,6 +226,9 @@ void move_zombies(Map *map) {
                 break;
             }
         }
+
+        // Check if the zombie is a big zombie
+        int is_big_zombie = (map->points[old_x][old_y].type == BIG_ZOMBIE_CHAR);
 
         // Move the zombie closer to the player's X position
         if (map->player_x < old_x) {
@@ -265,10 +271,18 @@ void move_zombies(Map *map) {
             map->zombie_x[eaten_zombie] = -1;
             map->zombie_y[eaten_zombie] = -1;
             map->num_zombies--;
-            // Change zombie to big zombie
+            map->num_big_zombies++;
             map->points[map->zombie_x[i]][map->zombie_y[i]].type = BIG_ZOMBIE_CHAR;
+            map->big_zombies[map->num_big_zombies] = i;
+            map->num_big_zombies++;
         } else {
-            map->points[new_x][new_y].type = ZOMBIE_CHAR;
+            if (is_big_zombie) {
+                map->points[new_x][new_y].type = BIG_ZOMBIE_CHAR;
+
+            } else {
+                map->points[new_x][new_y].type = ZOMBIE_CHAR;
+
+            }
         }
     }
 }
@@ -303,7 +317,7 @@ int get_arrow_keys() {
     } else if (buf == LEFT_CHAR) {
         direction = DIRECTION_LEFT;
     } else {
-        direction = (unsigned char)buf;
+        direction = (unsigned char) buf;
     }
 
     return direction;
