@@ -64,7 +64,8 @@ void print_map(Map *map) {
     clear(); // Clear the screen
     // Print the score at the top-left corner
     move(0, 0);
-    printw("Score: %d |  Zombies: %d |  Big Zombies: %d\n", score,map->num_zombies,map->num_big_zombies);
+    printw("Score: %d |  Zombies: %d |  Big Zombies: %d\n", score,
+           map->num_zombies, map->num_big_zombies);
 
     init_pair(1, COLOR_WHITE, COLOR_BLACK);  // white walls
     init_pair(2, COLOR_GREEN, COLOR_BLACK);  // green zombies
@@ -244,9 +245,9 @@ void move_zombies(Map *map) {
             new_y++;
         }
 
-//        if (new_x == map->player_x && new_y == map->player_y) {
-//            continue; // Don't move onto the player's square
-//        }
+        //        if (new_x == map->player_x && new_y == map->player_y) {
+        //            continue; // Don't move onto the player's square
+        //        }
 
         if (new_x < 0 || new_x >= MAP_SIZE || new_y < 0 || new_y >= MAP_SIZE) {
             continue; // Can't move outside the map
@@ -275,7 +276,9 @@ void move_zombies(Map *map) {
             map->points[map->zombie_x[i]][map->zombie_y[i]].type = BIG_ZOMBIE_CHAR;
             map->big_zombies[map->num_big_zombies - 1] = i;
         } else {
-            map->points[new_x][new_y].type = is_big_zombie ? BIG_ZOMBIE_CHAR : ZOMBIE_CHAR;
+            // Show applicable zombie type
+            map->points[new_x][new_y].type =
+                    is_big_zombie ? BIG_ZOMBIE_CHAR : ZOMBIE_CHAR;
         }
     }
 }
@@ -310,7 +313,7 @@ int get_arrow_keys() {
     } else if (buf == LEFT_CHAR) {
         direction = DIRECTION_LEFT;
     } else {
-        direction = (unsigned char) buf;
+        direction = (unsigned char)buf;
     }
 
     return direction;
@@ -419,8 +422,8 @@ int main() {
                     printw("Play again? (y/n)\n");
                     int play_again = getch();
                     if (play_again == 'y') {
-                        // Free the map and break out of inner loop to restart game
-                        // free_map(&map);
+                        // TODO: fix this
+                        //  free_map(&map);
                         break;
                     } else {
                         exit_game();
