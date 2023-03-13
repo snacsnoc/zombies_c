@@ -28,6 +28,8 @@
 
 int score = 0;
 
+int move_counter = 0;
+
 typedef struct {
     char type;   // Type of point on the map ('#' for wall, 'P' for player, etc.)
     int visited; // Flag indicating whether the point has been visited by the
@@ -66,8 +68,8 @@ void print_map(Map *map) {
 
     // Print the score in the top-left corner
     move(0, 0);
-    printw("Score: %d |  Zombies: %d |  Big Zombies: %d\n", score,
-           map->num_zombies, map->num_big_zombies);
+    printw("Score: %d | Moves: %d  |  Zombies: %d |  Big Zombies: %d\n", score,
+           move_counter, map->num_zombies, map->num_big_zombies);
 
     init_pair(1, COLOR_WHITE, COLOR_BLACK);  // white walls
     init_pair(2, COLOR_GREEN, COLOR_BLACK);  // green zombies
@@ -355,6 +357,7 @@ int check_item(Map *map) {
 int check_goal(Map *map) {
     return map->player_x == map->goal_x && map->player_y == map->goal_y;
 }
+
 int display_menu() {
     int choice;
     while (1) {
@@ -420,7 +423,6 @@ int main() {
         print_map(&map);
 
         // Game loop
-        int move_counter = 0;
         while (1) {
             // Read input
             int direction = get_arrow_keys();
