@@ -4,6 +4,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#define VERSION 0.1
 #define MAP_SIZE 32 
 #define WALL_CHAR '#'
 #define PLAYER_CHAR 'P'
@@ -63,7 +64,7 @@ void init_map(Map *map) {
 void print_map(Map *map) {
     clear(); // Clear the screen
 
-    // Print the score at the top-left corner
+    // Print the score in the top-left corner
     move(0, 0);
     printw("Score: %d |  Zombies: %d |  Big Zombies: %d\n", score,
            map->num_zombies, map->num_big_zombies);
@@ -197,6 +198,8 @@ int move_player(Map *map, int direction) {
         return 0; // Can't move outside the map
     }
 
+    // TODO: player can move into walls continuously
+    //  and waste turns
     if (map->points[new_x][new_y].type == WALL_CHAR) {
         return 0; // Can't move into a wall
     }
@@ -269,7 +272,9 @@ void move_zombies(Map *map) {
 
         // If this zombie ate another zombie, remove the eaten zombie from the map
         // TODO: zombie can get frozen somehow after eating
-        if (eaten_zombie != -1) {
+        // TODO: only one big zombie displays sometimes
+        // TODO: zombie should not be able to eat big zombie
+        if (eaten_zombie != -1 && is_big_zombie == 0) {
             map->points[map->zombie_x[eaten_zombie]][map->zombie_y[eaten_zombie]]
                     .type = EMPTY_CHAR;
             map->zombie_x[eaten_zombie] = -1;
