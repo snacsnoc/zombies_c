@@ -3,8 +3,9 @@
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
+#include <time.h>
 
-#define VERSION 0.1
+#define VERSION 0.1.1
 #define MAP_SIZE 32
 #define WALL_CHAR '#'
 #define PLAYER_CHAR 'P'
@@ -28,6 +29,9 @@
 int score = 0;
 
 int move_counter = 0;
+
+// Keep track of the time of the last zombie movement
+time_t last_zombie_move_time = 0;
 
 typedef struct {
     char type;   // Type of point on the map ('#' for wall, 'P' for player, etc.)
@@ -300,6 +304,37 @@ void move_zombies(Map *map) {
     }
 }
 
+void random_move_zombies(Map *map) {
+    for (int i = 0; i < map->num_zombies; i++) {
+        // Randomly select a direction for the zombie to move in
+        int direction = rand() % 4 + 1;
+
+        // Update the zombie's position based on the selected direction
+        switch (direction) {
+            case DIRECTION_UP:
+                if (map->zombie_x[i] > 1 && map->points[map->zombie_x[i] - 1][map->zombie_y[i]].type == EMPTY_CHAR) {
+                    map->zombie_x[i] -= 1;
+                }
+                break;
+            case DIRECTION_RIGHT:
+                if (map->zombie_y[i] < MAP_SIZE - 2 && map->points[map->zombie_x[i]][map->zombie_y[i] + 1].type == EMPTY_CHAR) {
+                    map->zombie_y[i] += 1;
+                }
+                break;
+            case DIRECTION_DOWN:
+                if (map->zombie_x[i] < MAP_SIZE - 2 && map->points[map->zombie_x[i] + 1][map->zombie_y[i]].type == EMPTY_CHAR) {
+                    map->zombie_x[i] += 1;
+                }
+                break;
+            case DIRECTION_LEFT:
+                if (map->zombie_y[i] > 1 && map->points[map->zombie_x[i]][map->zombie_y[i] - 1].type == EMPTY_CHAR) {
+                    map->zombie_y[i] -= 1;
+                }
+                break;
+        }
+    }
+}
+
 int get_arrow_keys() {
     char buf = 0;
     int direction = 0;
@@ -423,6 +458,8 @@ int main() {
 
         // Game loop
         while (1) {
+            time_t current_time = time(NULL);
+
             // Read input
             int direction = get_arrow_keys();
 
@@ -452,11 +489,15 @@ int main() {
                 // Increment the move counter
                 move_counter++;
 
-                // Call move_zombies every second move
-                if (move_counter % 2 == 0) {
+//                // Call move_zombies every second move
+//                if (move_counter % 2 == 0) {
+//                    move_zombies(&map);
+//                }
+                // Move the zombies if 250ms have elapsed since the last move
+                if (current_time - last_zombie_move_time >= 0.25) {
                     move_zombies(&map);
+                    last_zombie_move_time = current_time;
                 }
-
                 // Print the map
                 print_map(&map);
 
