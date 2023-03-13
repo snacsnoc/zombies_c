@@ -317,12 +317,14 @@ void random_move_zombies(Map *map) {
                 }
                 break;
             case DIRECTION_RIGHT:
-                if (map->zombie_y[i] < MAP_SIZE - 2 && map->points[map->zombie_x[i]][map->zombie_y[i] + 1].type == EMPTY_CHAR) {
+                if (map->zombie_y[i] < MAP_SIZE - 2 &&
+                    map->points[map->zombie_x[i]][map->zombie_y[i] + 1].type == EMPTY_CHAR) {
                     map->zombie_y[i] += 1;
                 }
                 break;
             case DIRECTION_DOWN:
-                if (map->zombie_x[i] < MAP_SIZE - 2 && map->points[map->zombie_x[i] + 1][map->zombie_y[i]].type == EMPTY_CHAR) {
+                if (map->zombie_x[i] < MAP_SIZE - 2 &&
+                    map->points[map->zombie_x[i] + 1][map->zombie_y[i]].type == EMPTY_CHAR) {
                     map->zombie_x[i] += 1;
                 }
                 break;
@@ -466,64 +468,58 @@ int main() {
             // Move the player
             if (direction != 0) {
                 int result = move_player(&map, direction);
+                // Count player moves, must fix counting moving into walls
+                // TODO: implementcharacter  move limit
+                move_counter++;
                 if (result == 0) {
                     printw("Invalid move\n");
                 }
-
-                // Check if the game is over
-                if (check_goal(&map)) {
-                    score++;
-                    printw("You win!\n");
-
-                    printw("Play again? (y/n)\n");
-                    int play_again = getch();
-                    if (play_again == 'y') {
-                        // Free the map and break out of inner loop to restart game
-                        // free_map(&map);
-                        break;
-                    } else {
-                        exit_game();
-                    }
-                }
-
-                // Increment the move counter
-                move_counter++;
-
-//                // Call move_zombies every second move
-//                if (move_counter % 2 == 0) {
-//                    move_zombies(&map);
-//                }
-                // Move the zombies if 250ms have elapsed since the last move
-                if (current_time - last_zombie_move_time >= 0.25) {
-                    move_zombies(&map);
-                    last_zombie_move_time = current_time;
-                }
-                // Print the map
-                print_map(&map);
-
-                if (check_collision(&map)) {
-                    score--;
-                    printw("You lose!\n");
-
-                    // Prompt user to play again
-
-                    printw("Play again? (y/n)\n");
-                    int play_again = getch();
-                    if (play_again == 'y') {
-                        // TODO: fix this
-                        //  free_map(&map);
-                        break;
-                    } else {
-                        exit_game();
-                    }
-                }
             }
-
             // Quit the game if q is pressed
             if (direction == 'q') {
                 printw("Quitting game...\n");
                 exit_game();
             }
+            // Check if the game is over
+            if (check_goal(&map)) {
+                score++;
+                printw("You win!\n");
+
+                printw("Play again? (y/n)\n");
+                int play_again = getch();
+                if (play_again == 'y') {
+                    // Break out of inner loop to restart game
+                    move_counter = 0;
+                    break;
+                } else {
+                    exit_game();
+                }
+                // Move the zombies if 250ms have elapsed since the last move
+
+
+            } else if (check_collision(&map)) {
+                score--;
+                printw("You lose!\n");
+
+                // Prompt user to play again
+                printw("Play again? (y/n)\n");
+                int play_again = getch();
+                if (play_again == 'y') {
+                    // TODO: fix this
+                    //  free_map(&map);
+                    break;
+                } else {
+                    exit_game();
+                }
+            } else {
+                // Print the map
+                print_map(&map);
+            }
+            if (current_time - last_zombie_move_time >= 0.25) {
+                move_zombies(&map);
+                last_zombie_move_time = current_time;
+            }
         }
     }
 }
+
