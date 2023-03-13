@@ -355,6 +355,33 @@ int check_item(Map *map) {
 int check_goal(Map *map) {
     return map->player_x == map->goal_x && map->player_y == map->goal_y;
 }
+int display_menu() {
+    int choice;
+    while (1) {
+        clear();
+        printw("Select difficulty level:\n");
+        printw("1. Easy\n");
+        printw("2. Medium\n");
+        printw("3. Hard\n");
+        choice = getch() - '0';
+        if (choice >= 1 && choice <= 3) {
+            return choice;
+        }
+    }
+}
+
+int get_num_zombies(int difficulty) {
+    switch (difficulty) {
+        case 1:
+            return 3;
+        case 2:
+            return 6;
+        case 3:
+            return 10;
+        default:
+            return 0;
+    }
+}
 
 // Free the memory used by the map
 void free_map(Map *map) {
@@ -376,6 +403,8 @@ int main() {
 
     // Seed the random number generator
     srand(time(NULL));
+    // Display menu and get user's choice
+    int difficulty = display_menu();
 
     // Main game loop
     while (1) {
@@ -386,7 +415,8 @@ int main() {
         place_walls(&map);
         place_player(&map);
         place_goal(&map);
-        place_zombies(&map, NUM_ZOMBIES);
+        int num_zombies = get_num_zombies(difficulty);
+        place_zombies(&map, num_zombies);
         print_map(&map);
 
         // Game loop
