@@ -74,6 +74,7 @@ void print_map(Map *map) {
     init_pair(3, COLOR_YELLOW, COLOR_BLACK); // yellow end
     init_pair(4, COLOR_BLUE, COLOR_BLACK);   // blue player
 
+
     for (int i = 0; i < MAP_SIZE; i++) {
         for (int j = 0; j < MAP_SIZE; j++) {
             Point point = map->points[i][j];
@@ -102,9 +103,9 @@ void print_map(Map *map) {
                 printw("%c", BIG_ZOMBIE_CHAR);
                 attroff(COLOR_PAIR(2));
             } else if (point.type == TRAIL_CHAR) {
-                attron(COLOR_PAIR(1));
+                attron(COLOR_PAIR(4));
                 printw("%c", TRAIL_CHAR);
-                attroff(COLOR_PAIR(1));
+                attroff(COLOR_PAIR(4));
             } else {
                 printw("%c", EMPTY_CHAR);
             }
@@ -258,7 +259,15 @@ void move_zombies(Map *map) {
         if (new_x < 0 || new_x >= MAP_SIZE || new_y < 0 || new_y >= MAP_SIZE) {
             continue; // Can't move outside the map
         }
+        // TODO: when zombies move off of trail char, trail char gets erased
+        // This mostly works
+        if (map->points[new_x][new_y].type == TRAIL_CHAR) {
+            map->points[old_x][old_y].type = TRAIL_CHAR;
+        }else{
+            map->points[old_x][old_y].type = EMPTY_CHAR;
+        }
 
+        // TODO: Zombies can get stuck behind walls
         if (map->points[new_x][new_y].type == WALL_CHAR) {
             continue; // Can't move into a wall
         }
@@ -266,14 +275,13 @@ void move_zombies(Map *map) {
         if (map->points[new_x][new_y].type == END_CHAR) {
             continue; // Can't move into end goal
         }
-        map->points[old_x][old_y].type = EMPTY_CHAR;
         map->zombie_x[i] = new_x;
         map->zombie_y[i] = new_y;
 
         // If this zombie ate another zombie, remove the eaten zombie from the map
+        // Big zombies cannot be eaten
         // TODO: zombie can get frozen somehow after eating
         // TODO: only one big zombie displays sometimes
-        // TODO: zombie should not be able to eat big zombie
         if (eaten_zombie != -1 && is_big_zombie == 0) {
             map->points[map->zombie_x[eaten_zombie]][map->zombie_y[eaten_zombie]]
                     .type = EMPTY_CHAR;
