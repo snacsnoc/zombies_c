@@ -5,7 +5,7 @@
 #include <unistd.h>
 
 #define VERSION 0.1
-#define MAP_SIZE 32 
+#define MAP_SIZE 32
 #define WALL_CHAR '#'
 #define PLAYER_CHAR 'P'
 #define END_CHAR 'E'
@@ -13,7 +13,6 @@
 #define BIG_ZOMBIE_CHAR 'Z'
 #define ITEM_CHAR '$'
 #define MAX_ZOMBIES 10
-#define NUM_ZOMBIES 8
 #define EMPTY_CHAR ' '
 #define TRAIL_CHAR '.'
 #define DIRECTION_UP 4
@@ -265,7 +264,7 @@ void move_zombies(Map *map) {
         // This mostly works
         if (map->points[new_x][new_y].type == TRAIL_CHAR) {
             map->points[old_x][old_y].type = TRAIL_CHAR;
-        }else{
+        } else {
             map->points[old_x][old_y].type = EMPTY_CHAR;
         }
 
@@ -311,7 +310,7 @@ int get_arrow_keys() {
     }
 
     // Escape
-    if (buf == 27 && read(STDIN_FILENO, &buf, 1) == -1) {
+    if (buf == ESC_CHAR && read(STDIN_FILENO, &buf, 1) == -1) {
         perror("read");
         exit(1);
     }
@@ -331,7 +330,7 @@ int get_arrow_keys() {
     } else if (buf == LEFT_CHAR) {
         direction = DIRECTION_LEFT;
     } else {
-        direction = (unsigned char)buf;
+        direction = (unsigned char) buf;
     }
 
     return direction;
