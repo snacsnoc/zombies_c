@@ -4,15 +4,15 @@
 #include <time.h>
 #include <unistd.h>
 
-#define MAP_SIZE 24
+#define MAP_SIZE 32 
 #define WALL_CHAR '#'
 #define PLAYER_CHAR 'P'
 #define END_CHAR 'E'
 #define ZOMBIE_CHAR 'z'
 #define BIG_ZOMBIE_CHAR 'Z'
-#define ITEM_CHAR '!'
+#define ITEM_CHAR '$'
 #define MAX_ZOMBIES 10
-#define NUM_ZOMBIES 6
+#define NUM_ZOMBIES 8
 #define EMPTY_CHAR ' '
 #define TRAIL_CHAR '.'
 #define DIRECTION_UP 4
@@ -62,6 +62,7 @@ void init_map(Map *map) {
 
 void print_map(Map *map) {
     clear(); // Clear the screen
+
     // Print the score at the top-left corner
     move(0, 0);
     printw("Score: %d |  Zombies: %d |  Big Zombies: %d\n", score,
@@ -143,6 +144,8 @@ void place_player(Map *map) {
 
 void place_goal(Map *map) {
     int x, y;
+
+    // Find empty coords to place the end goal
     do {
         x = rand() % (MAP_SIZE - 2) + 1;
         y = rand() % (MAP_SIZE - 2) + 1;
@@ -244,11 +247,11 @@ void move_zombies(Map *map) {
         } else if (map->player_y > old_y) {
             new_y++;
         }
-
-        //        if (new_x == map->player_x && new_y == map->player_y) {
-        //            continue; // Don't move onto the player's square
-        //        }
-
+        /*
+                if (new_x == map->player_x && new_y == map->player_y) {
+                    continue; // Don't move onto the player's square
+                }
+        */
         if (new_x < 0 || new_x >= MAP_SIZE || new_y < 0 || new_y >= MAP_SIZE) {
             continue; // Can't move outside the map
         }
@@ -331,8 +334,8 @@ int check_collision(Map *map) {
     return 0;
 }
 
-void check_item(Map *map) {
-    // return map->points[map->player_x][map->player_y].type == ITEM_CHAR;
+int check_item(Map *map) {
+    return map->points[map->player_x][map->player_y].type == ITEM_CHAR;
 }
 
 // Check if the player has reached the end of the map
