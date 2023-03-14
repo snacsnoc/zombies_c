@@ -483,7 +483,7 @@ void *zombie_movement(void *arg) {
         move_zombies(map);
         print_map(map);
         pthread_mutex_unlock(&map_mutex);
-        usleep(250000); // Wait 250ms before moving the zombies again
+        usleep(550000); // Wait 550ms before moving the zombies again
     }
     pthread_exit(NULL);
 }
@@ -533,24 +533,43 @@ int main() {
         while (1) {
             // time_t current_time = time(NULL);
 
-
-
-
             // Read input and move the player
             int direction = get_arrow_keys();
             pthread_mutex_lock(&map_mutex);
-            move_player(&map, direction);
+            //move_player(&map, direction);
+            //            // Move the player
+            if (direction != 0 ) {
+                int result = move_player(&map, direction);
+                // Count player moves, must fix counting moving into walls
+                // TODO: implement character  move limit
+                if (result) {
+                    move_counter++;
+                }
+
+                if (result == 0) {
+                    printw("Invalid move\n");
+                    refresh();
+
+                }
+                if (check_goal(&map)) {
+                    score++;
+                    printw("You win!\n");
+
+                    printw("Play again? (y/n)\n");
+                    int play_again = getch();
+                    if (play_again == 'y') {
+                        // Break out of inner loop to restart game
+                        break;
+                    } else {
+                        exit_game();
+                    }
+                }
+            }
             pthread_mutex_unlock(&map_mutex);
 
             // Redraw the map
             print_map(&map);
-            /*
-            // Read input
-            int direction = get_arrow_keys();
 
-
-
-*/
             if (game_over) {
                 score--;
                 printw("You lose!\n");
@@ -565,20 +584,6 @@ int main() {
                     exit_game();
                 }
             }
-//            // Move the player
-//            if (direction != 0 )  {
-//                int result = move_player(&map, direction);
-//                // Count player moves, must fix counting moving into walls
-//                // TODO: implement character  move limit
-//                if(result){
-//                    move_counter++;
-//                }
-//
-//                if (result == 0) {
-//                    printw("Invalid move\n");
-//                    refresh();
-//
-//                }
 
             // Check if the game is over
             // Check if the game is over
@@ -591,19 +596,7 @@ int main() {
 
             // Reset the game_over flag and start a new game
             game_over = 0;
-//                if (check_goal(&map)) {
-//                    score++;
-//                    printw("You win!\n");
-//
-//                    printw("Play again? (y/n)\n");
-//                    int play_again = getch();
-//                    if (play_again == 'y') {
-//                        // Break out of inner loop to restart game
-//                        break;
-//                    } else {
-//                        exit_game();
-//                    }
-//                }
+
 
             // Update the time of the last player move
 //                last_player_move_time = current_time;
