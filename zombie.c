@@ -201,8 +201,6 @@ int move_player(Map *map, int direction) {
         return 0; // Can't move outside the map
     }
 
-    // TODO: player can move into walls continuously
-    //  and waste turns
     if (map->points[new_x][new_y].type == WALL_CHAR) {
         return 0; // Can't move into a wall
     }
@@ -253,7 +251,7 @@ void move_zombies(Map *map) {
         } else if (map->player_y > old_y) {
             new_y++;
         }
-        /*
+        /* Remove this comment to forbid zombies to eat the player
                 if (new_x == map->player_x && new_y == map->player_y) {
                     continue; // Don't move onto the player's square
                 }
@@ -458,10 +456,20 @@ int main() {
         // Keep track of the time of the last player move and the last zombie move
         time_t last_player_move_time = 0;
         time_t last_zombie_move_time = 0;
+        // Keep track of the time of the last random key press
+        time_t last_random_key_time = 0;
 
         // Game loop
         while (1) {
             time_t current_time = time(NULL);
+
+            if (current_time - last_random_key_time >= 5) {
+                int random_key = rand() % 256; // Generate a random key between 0 and 255
+                printw("%d",random_key);
+                refresh();
+                //send_key(random_key); // Send the random key to the screen
+                last_random_key_time = current_time; // Update the time of the last random key press
+            }
             // Read input
             int direction = get_arrow_keys();
 
@@ -470,7 +478,9 @@ int main() {
                 int result = move_player(&map, direction);
                 // Count player moves, must fix counting moving into walls
                 // TODO: implement character  move limit
-                move_counter++;
+                if(result){
+                    move_counter++;
+                }
 
                 if (result == 0) {
                     printw("Invalid move\n");
@@ -491,28 +501,38 @@ int main() {
                     }
                 }
 
+                // Update the time of the last player move
+                last_player_move_time = current_time;
+            }
 
-                // Call move_zombies every second move
-                if (current_time - last_zombie_move_time >= 0.25) {
-                    move_zombies(&map);
-                    last_zombie_move_time = current_time;
-                }
+            // If the player has not moved for 250ms, move the zombies
+            if (current_time - last_player_move_time >= 0.25) {
+                move_zombies(&map);
+                last_zombie_move_time = current_time;
+            }
 
-                // Print the map
-                print_map(&map);
+            // If it has been 250ms since the last zombie move, move the zombies
+            if (current_time - last_zombie_move_time >= 0.25) {
+                move_zombies(&map);
+                last_zombie_move_time = current_time;
+            }
 
-                if (check_collision(&map)) {
-                    score--;
-                    printw("You lose!\n");
+            // Print the map
+            print_map(&map);
 
-                    // Prompt user to play again
-                    printw("Play again? (y/n)\n");
-                    int play_again = getch();
-                    if (play_again == 'y') {
-                        break;
-                    } else {
-                        exit_game();
-                    }
+            if (check_collision(&map)) {
+                score--;
+                printw("You lose!\n");
+
+                // Prompt user to play again
+                printw("Play again? (y/n)\n");
+                int play_again = getch();
+                if (play_again == 'y') {
+                    // TODO: fix this
+                    //  free_map(&map);
+                    break;
+                } else {
+                    exit_game();
                 }
             }
 
