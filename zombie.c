@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
-#include <time.h>
+
 
 #define VERSION 0.1.1
 #define MAP_SIZE 32
@@ -30,13 +30,10 @@ int score = 0;
 
 int move_counter = 0;
 
-// Keep track of the time of the last zombie movement
-time_t last_zombie_move_time = 0;
-
 typedef struct {
     char type;   // Type of point on the map ('#' for wall, 'P' for player, etc.)
     int visited; // Flag indicating whether the point has been visited by the
-    // player
+// player
 } Point;
 
 typedef struct {
@@ -265,12 +262,14 @@ void move_zombies(Map *map) {
             continue; // Can't move outside the map
         }
         // TODO: when zombies move off of trail char, trail char gets erased
+        // TODO: zombies disappear randomly
         // This mostly works
         if (map->points[new_x][new_y].type == TRAIL_CHAR) {
             map->points[old_x][old_y].type = TRAIL_CHAR;
         } else {
             map->points[old_x][old_y].type = EMPTY_CHAR;
         }
+
 
         // TODO: Zombies can get stuck behind walls
         if (map->points[new_x][new_y].type == WALL_CHAR) {
@@ -447,8 +446,6 @@ int main() {
 
     // Main game loop
     while (1) {
-        // Print instructions and set up the map
-        printw("Use arrow keys to move, q to quit\n\n");
         Map map;
         init_map(&map);
         place_walls(&map);
@@ -458,10 +455,12 @@ int main() {
         place_zombies(&map, num_zombies);
         print_map(&map);
 
+        // Keep track of the time of the last zombie movement
+        time_t last_zombie_move_time = 0;
+
         // Game loop
         while (1) {
             time_t current_time = time(NULL);
-
             // Read input
             int direction = get_arrow_keys();
 
@@ -469,57 +468,63 @@ int main() {
             if (direction != 0) {
                 int result = move_player(&map, direction);
                 // Count player moves, must fix counting moving into walls
-                // TODO: implementcharacter  move limit
+                // TODO: implement character  move limit
                 move_counter++;
+
                 if (result == 0) {
                     printw("Invalid move\n");
                 }
+
+                // Check if the game is over
+                if (check_goal(&map)) {
+                    score++;
+                    printw("You win!\n");
+
+                    printw("Play again? (y/n)\n");
+                    int play_again = getch();
+                    if (play_again == 'y') {
+                        // Free the map and break out of inner loop to restart game
+                        // free_map(&map);
+                        break;
+                    } else {
+                        exit_game();
+                    }
+                }
+
+
+
+                // Call move_zombies every second move
+                if (current_time - last_zombie_move_time >= 0.25) {
+                    move_zombies(&map);
+                    last_zombie_move_time = current_time;
+                }
+
+                // Print the map
+                print_map(&map);
+
+                if (check_collision(&map)) {
+                    score--;
+                    printw("You lose!\n");
+
+                    // Prompt user to play again
+
+                    printw("Play again? (y/n)\n");
+                    int play_again = getch();
+                    if (play_again == 'y') {
+                        // TODO: fix this
+                        //  free_map(&map);
+                        break;
+                    } else {
+                        exit_game();
+                    }
+                }
             }
+
             // Quit the game if q is pressed
             if (direction == 'q') {
                 printw("Quitting game...\n");
                 exit_game();
             }
-            // Check if the game is over
-            if (check_goal(&map)) {
-                score++;
-                printw("You win!\n");
-
-                printw("Play again? (y/n)\n");
-                int play_again = getch();
-                if (play_again == 'y') {
-                    // Break out of inner loop to restart game
-                    move_counter = 0;
-                    break;
-                } else {
-                    exit_game();
-                }
-                // Move the zombies if 250ms have elapsed since the last move
-
-
-            } else if (check_collision(&map)) {
-                score--;
-                printw("You lose!\n");
-
-                // Prompt user to play again
-                printw("Play again? (y/n)\n");
-                int play_again = getch();
-                if (play_again == 'y') {
-                    // TODO: fix this
-                    //  free_map(&map);
-                    break;
-                } else {
-                    exit_game();
-                }
-            } else {
-                // Print the map
-                print_map(&map);
-            }
-            if (current_time - last_zombie_move_time >= 0.25) {
-                move_zombies(&map);
-                last_zombie_move_time = current_time;
-            }
         }
     }
 }
-
