@@ -6,7 +6,7 @@
 #include <pthread.h>
 
 #define VERSION 0.1.1
-#define MAP_SIZE 32
+#define MAP_SIZE 35
 #define WALL_CHAR '#'
 #define PLAYER_CHAR 'P'
 #define END_CHAR 'E'
@@ -412,35 +412,32 @@ int display_menu() {
 }
 
 int display_win_screen() {
-    clear();
-    printw("You win!\n");
-    printw("Play again? (y/n)\n");
-
-    printw("You win!\n");
-
-    printw("Play again? (y/n)\n");
-    int play_again = getch();
-    if (play_again == 'y') {
-        // Break out of inner loop to restart game
-        return 1;
-    } else {
-        return 0;
+    int choice;
+    while (1) {
+        clear();
+        printw("YOU WIN!\n");
+        printw("1. Play again\n");
+        printw("2. Back to main menu\n");
+        printw("3. Quit\n");
+        choice = getch() - '0';
+        if (choice >= 1 && choice <= 3) {
+            return choice;
+        }
     }
-    return 0;
 }
 
 int display_lose_screen() {
-    clear();
-    printw("You lose!\n");
-    printw("Play again? (y/n)\n");
-
-
-    int play_again = getch();
-    if (play_again == 'y') {
-        // Break out of inner loop to restart game
-        return 1;
-    } else {
-        return 0;
+    int choice;
+    while (1) {
+        clear();
+        printw("YOU LOSE!\n");
+        printw("1. Try again\n");
+        printw("2. Back to main menu\n");
+        printw("3. Quit\n");
+        choice = getch() - '0'; // str to int
+        if (choice >= 1 && choice <= 3) {
+            return choice;
+        }
     }
 }
 
@@ -562,28 +559,37 @@ int main() {
             // Check if the game is over
             if (check_collision(&map) || direction == 'q') {
                 game_over = 1;
-                exit_game();
+
                 //break;
             }
 
             if (game_over) {
                 score--;
-                if (display_lose_screen()) {
+                int result = display_lose_screen();
 
-
-                    // Break out of inner loop to restart game
-                    break;
-                } else {
-                    exit_game();
+                switch (result) {
+                    case 1: //try again
+                        break;
+                    case 2: // main menu
+                        break;
+                    case 3: //quit
+                        exit_game();
+                        break;
                 }
 
 
-            }
-
-            if (game_win) {
+            } else if (game_win) {
                 score++;
-                display_win_screen();
-
+                int result = display_win_screen();
+                switch (result) {
+                    case 1: //try again
+                        break;
+                    case 2: // main menu
+                        break;
+                    case 3: //quit
+                        exit_game();
+                        break;
+                }
             }
 
             // Reset the game_over flag and start a new game
