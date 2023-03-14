@@ -436,7 +436,10 @@ int main() {
 
     initscr();
     start_color();
-
+    // Do not echo user input
+    noecho();
+    // Make cursor invisible
+    curs_set(0);
     // Seed the random number generator
     srand(time(NULL));
     // Display menu and get user's choice
@@ -454,9 +457,9 @@ int main() {
         print_map(&map);
 
         // Keep track of the time of the last player move and the last zombie move
+        // and last random send key event
         time_t last_player_move_time = 0;
         time_t last_zombie_move_time = 0;
-        // Keep track of the time of the last random key press
         time_t last_random_key_time = 0;
 
         // Game loop
@@ -467,7 +470,7 @@ int main() {
                 int random_key = rand() % 256; // Generate a random key between 0 and 255
                 printw("%d",random_key);
                 refresh();
-                //send_key(random_key); // Send the random key to the screen
+                print_map(&map);
                 last_random_key_time = current_time; // Update the time of the last random key press
             }
             // Read input
@@ -507,12 +510,14 @@ int main() {
 
             // If the player has not moved for 250ms, move the zombies
             if (current_time - last_player_move_time >= 0.25) {
+                printw("moving zombies!\n");
                 move_zombies(&map);
                 last_zombie_move_time = current_time;
             }
 
             // If it has been 250ms since the last zombie move, move the zombies
             if (current_time - last_zombie_move_time >= 0.25) {
+                printw("moving zombies!\n");
                 move_zombies(&map);
                 last_zombie_move_time = current_time;
             }
@@ -526,9 +531,8 @@ int main() {
 
                 // Prompt user to play again
                 printw("Play again? (y/n)\n");
-                int play_again = getch();
-                if (play_again == 'y') {
-                    // TODO: fix this
+                if (getch() == 'y') {
+                    // TODO: add this
                     //  free_map(&map);
                     break;
                 } else {
