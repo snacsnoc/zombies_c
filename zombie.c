@@ -455,7 +455,8 @@ int main() {
         place_zombies(&map, num_zombies);
         print_map(&map);
 
-        // Keep track of the time of the last zombie movement
+        // Keep track of the time of the last player move and the last zombie move
+        time_t last_player_move_time = 0;
         time_t last_zombie_move_time = 0;
 
         // Game loop
@@ -483,14 +484,12 @@ int main() {
                     printw("Play again? (y/n)\n");
                     int play_again = getch();
                     if (play_again == 'y') {
-                        // Free the map and break out of inner loop to restart game
-                        // free_map(&map);
+                        // Break out of inner loop to restart game
                         break;
                     } else {
                         exit_game();
                     }
                 }
-
 
 
                 // Call move_zombies every second move
@@ -507,12 +506,9 @@ int main() {
                     printw("You lose!\n");
 
                     // Prompt user to play again
-
                     printw("Play again? (y/n)\n");
                     int play_again = getch();
                     if (play_again == 'y') {
-                        // TODO: fix this
-                        //  free_map(&map);
                         break;
                     } else {
                         exit_game();
