@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <unistd.h>
-
+#include <pthread.h>
 
 #define VERSION 0.1.1
 #define MAP_SIZE 32
@@ -29,7 +29,11 @@
 int score = 0;
 
 int move_counter = 0;
-
+// Keep track of the time of the last player move and the last zombie move
+// and last random send key event
+time_t last_player_move_time = 0;
+time_t last_zombie_move_time = 0;
+time_t last_random_key_time = 0;
 typedef struct {
     char type;   // Type of point on the map ('#' for wall, 'P' for player, etc.)
     int visited; // Flag indicating whether the point has been visited by the
@@ -68,8 +72,8 @@ void print_map(Map *map) {
 
     // Print the score in the top-left corner
     move(0, 0);
-    printw("Score: %d | Moves: %d  |  Zombies: %d |  Big Zombies: %d\n", score,
-           move_counter, map->num_zombies, map->num_big_zombies);
+    printw("Score: %d | Moves: %d  |  Zombies: %d |  Big Zombies: %d | lplay mov tim: %d\n", score,
+           move_counter, map->num_zombies, map->num_big_zombies, last_player_move_time);
 
     init_pair(1, COLOR_WHITE, COLOR_BLACK);  // white walls
     init_pair(2, COLOR_GREEN, COLOR_BLACK);  // green zombies
@@ -399,6 +403,7 @@ int display_menu() {
         printw("1. Easy\n");
         printw("2. Medium\n");
         printw("3. Hard\n");
+        printw("4. Extreme\n");
         choice = getch() - '0';
         if (choice >= 1 && choice <= 3) {
             return choice;
@@ -406,14 +411,17 @@ int display_menu() {
     }
 }
 
-int get_num_zombies(int difficulty) {
+// Set number of zombies based on difficulty
+int diffset_zombies(int difficulty) {
     switch (difficulty) {
-        case 1:
+        case 1: // easy
             return 3;
-        case 2:
+        case 2: // medium
             return 6;
-        case 3:
+        case 3: // hard
             return 10;
+        case 4: // extreme
+            return 16;
         default:
             return 0;
     }
@@ -432,100 +440,118 @@ void exit_game(void) {
     exit(1);
 }
 
+//void *player_thread(void *arg) {
+//    Map *map = (Map *)arg;
+//    while (1) {
+//        // Read input
+//        int direction = get_arrow_keys();
+//        // Move the player
+//        move_player(map, direction);
+//    }
+//}
+//
+//void *zombie_thread(void *arg) {
+//    Map *map = (Map *)arg;
+//    while (1) {
+//        // Move the zombies
+//        move_zombies(map);
+//    }
+//}
+
+
+//void *zombie_movement(void *arg) {
+//    Map *map = (Map *) arg;
+//    time_t current_time = time(NULL);
+//
+//    // Move the zombies
+//  //  move_zombies(map);
+//                if (current_time - last_zombie_move_time >= 0.25) {
+//                printw("moving zombies!\n");
+//                move_zombies(&map);
+//                last_zombie_move_time = current_time;
+//            }
+//    pthread_exit(NULL);
+//}
+
+pthread_t zombie_thread;
+pthread_mutex_t map_mutex;
+
+void *zombie_movement(void *arg) {
+    Map *map = (Map *) arg;
+    while (1) {
+        pthread_mutex_lock(&map_mutex);
+        move_zombies(map);
+        print_map(map);
+        pthread_mutex_unlock(&map_mutex);
+        usleep(250000); // Wait 250ms before moving the zombies again
+    }
+    pthread_exit(NULL);
+}
+
 int main() {
+    int game_over = 0;
 
     initscr();
+    // Enable non-blocking mode
+    nodelay(stdscr, TRUE);
     start_color();
     // Do not echo user input
     noecho();
     // Make cursor invisible
     curs_set(0);
+    cbreak();
     // Seed the random number generator
     srand(time(NULL));
     // Display menu and get user's choice
     int difficulty = display_menu();
 
+    timeout(0); // set non-blocking input mode
+    Map map;
+    // Start a new thread for the zombie movement
+    pthread_t zombie_thread;
+    pthread_create(&zombie_thread, NULL, &zombie_movement, &map);
+    pthread_mutex_init(&map_mutex, NULL);
+
+    // Create the zombie thread
+    pthread_create(&zombie_thread, NULL, &zombie_movement, &map);
+
     // Main game loop
     while (1) {
-        Map map;
+        // Map map;
         init_map(&map);
         place_walls(&map);
         place_player(&map);
         place_goal(&map);
-        int num_zombies = get_num_zombies(difficulty);
+        int num_zombies = diffset_zombies(difficulty);
         place_zombies(&map, num_zombies);
         print_map(&map);
 
-        // Keep track of the time of the last player move and the last zombie move
-        // and last random send key event
-        time_t last_player_move_time = 0;
-        time_t last_zombie_move_time = 0;
-        time_t last_random_key_time = 0;
 
+        // Join the zombie thread before starting a new game
+        //pthread_join(zombie_thread, NULL);
         // Game loop
         while (1) {
-            time_t current_time = time(NULL);
+            // time_t current_time = time(NULL);
 
-            if (current_time - last_random_key_time >= 5) {
-                int random_key = rand() % 256; // Generate a random key between 0 and 255
-                printw("%d",random_key);
-                refresh();
-                print_map(&map);
-                last_random_key_time = current_time; // Update the time of the last random key press
-            }
+
+
+
+            // Read input and move the player
+            int direction = get_arrow_keys();
+            pthread_mutex_lock(&map_mutex);
+            move_player(&map, direction);
+            pthread_mutex_unlock(&map_mutex);
+
+            // Redraw the map
+            print_map(&map);
+            /*
             // Read input
             int direction = get_arrow_keys();
 
-            // Move the player
-            if (direction != 0) {
-                int result = move_player(&map, direction);
-                // Count player moves, must fix counting moving into walls
-                // TODO: implement character  move limit
-                if(result){
-                    move_counter++;
-                }
 
-                if (result == 0) {
-                    printw("Invalid move\n");
-                }
 
-                // Check if the game is over
-                if (check_goal(&map)) {
-                    score++;
-                    printw("You win!\n");
-
-                    printw("Play again? (y/n)\n");
-                    int play_again = getch();
-                    if (play_again == 'y') {
-                        // Break out of inner loop to restart game
-                        break;
-                    } else {
-                        exit_game();
-                    }
-                }
-
-                // Update the time of the last player move
-                last_player_move_time = current_time;
-            }
-
-            // If the player has not moved for 250ms, move the zombies
-            if (current_time - last_player_move_time >= 0.25) {
-                printw("moving zombies!\n");
-                move_zombies(&map);
-                last_zombie_move_time = current_time;
-            }
-
-            // If it has been 250ms since the last zombie move, move the zombies
-            if (current_time - last_zombie_move_time >= 0.25) {
-                printw("moving zombies!\n");
-                move_zombies(&map);
-                last_zombie_move_time = current_time;
-            }
-
-            // Print the map
-            print_map(&map);
-
-            if (check_collision(&map)) {
+*/
+            if (game_over) {
                 score--;
                 printw("You lose!\n");
 
@@ -539,12 +565,100 @@ int main() {
                     exit_game();
                 }
             }
+//            // Move the player
+//            if (direction != 0 )  {
+//                int result = move_player(&map, direction);
+//                // Count player moves, must fix counting moving into walls
+//                // TODO: implement character  move limit
+//                if(result){
+//                    move_counter++;
+//                }
+//
+//                if (result == 0) {
+//                    printw("Invalid move\n");
+//                    refresh();
+//
+//                }
 
-            // Quit the game if q is pressed
-            if (direction == 'q') {
-                printw("Quitting game...\n");
+            // Check if the game is over
+            // Check if the game is over
+            if (check_collision(&map) || direction == 'q') {
+                game_over = 1;
                 exit_game();
+                //break;
             }
+
+
+            // Reset the game_over flag and start a new game
+            game_over = 0;
+//                if (check_goal(&map)) {
+//                    score++;
+//                    printw("You win!\n");
+//
+//                    printw("Play again? (y/n)\n");
+//                    int play_again = getch();
+//                    if (play_again == 'y') {
+//                        // Break out of inner loop to restart game
+//                        break;
+//                    } else {
+//                        exit_game();
+//                    }
+//                }
+
+            // Update the time of the last player move
+//                last_player_move_time = current_time;
+//            }
+
+
+
+//            // If the player has not moved for 250ms, move the zombies
+//            if (current_time - last_player_move_time >= 0.25) {
+//                ungetch('c');
+//                printw("%d", (rand() % 256));
+//                refresh();
+//                move_zombies(&map);
+//                last_zombie_move_time = current_time;
+//            }
+//
+//
+//            // If it has been 250ms since the last zombie move, move the zombies
+//            if (current_time - last_zombie_move_time >= 0.25) {
+//                printw("moving zombies!\n");
+//                move_zombies(&map);
+//                last_zombie_move_time = current_time;
+//            }
+
+
+
+
+            // Print the map
+            //print_map(&map);
+
+//            if (check_collision(&map)) {
+//                score--;
+//                printw("You lose!\n");
+//
+//                // Prompt user to play again
+//                printw("Play again? (y/n)\n");
+//                if (getch() == 'y') {
+//                    // TODO: add this
+//                    //  free_map(&map);
+//                    break;
+//                } else {
+//                    exit_game();
+//                }
+//            }
+
+
+//            // Quit the game if q is pressed
+//            if (direction == 'q') {
+//                printw("Quitting game...\n");
+//                exit_game();
+//            }
+
         }
     }
+
+    // Clean up the mutex
+    pthread_mutex_destroy(&map_mutex);
 }
