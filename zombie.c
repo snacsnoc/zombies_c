@@ -65,6 +65,7 @@ typedef struct {
     int big_zombies[MAX_ZOMBIES];
 } Map;
 
+// Create a blank map
 void init_map(Map *map) {
     int i, j;
     for (i = 0; i < MAP_SIZE; i++) {
@@ -77,6 +78,7 @@ void init_map(Map *map) {
     map->num_zombies = 0;
     map->num_big_zombies = 0;
 }
+
 // Display game map
 void print_map(Map *map) {
     clear(); // Clear the screen
@@ -132,6 +134,14 @@ void print_map(Map *map) {
     refresh(); // Update the screen
 }
 
+// Print map when no changes are being made
+void safe_print_map(Map *map) {
+    pthread_mutex_lock(&map_mutex);
+    print_map(map);
+    pthread_mutex_unlock(&map_mutex);
+}
+
+// Place walls in and around map
 void place_walls(Map *map) {
     int i, j;
 
@@ -150,6 +160,7 @@ void place_walls(Map *map) {
     }
 }
 
+// Randomly place player in map
 void place_player(Map *map) {
     int x, y;
     do {
@@ -480,12 +491,6 @@ void free_map(Map *map) {
     free(map->points);
 }
 
-void safe_print_map(Map *map) {
-    pthread_mutex_lock(&map_mutex);
-    print_map(map);
-    pthread_mutex_unlock(&map_mutex);
-}
-
 void exit_game(void) {
     endwin();
     zombie_thread_running = 0;
@@ -529,8 +534,8 @@ void initialize_game() {
 
 }
 
+// Set up the playing area
 void setup_map(Map *map, int difficulty) {
-    // Map map;
     init_map(map);
     place_walls(map);
     place_player(map);
@@ -548,8 +553,15 @@ void t_cleanup() {
     pthread_mutex_destroy(&map_mutex);
 }
 
+/* This is where the action is
+ * a thread is created for zombie movement, so
+ * zombies can move independently of the player.
+ *
+ * We lock the mutex when the map is updated and
+ * unlock it when we're updating with it. This prevents race conditions
+ * and weird errors.
+ */
 void game_loop(Map *map) {
-    // Game loop
     while (!game_over && !game_win) {
         time_t current_time = time(NULL);
 
@@ -579,19 +591,12 @@ void game_loop(Map *map) {
         }
         pthread_mutex_unlock(&map_mutex);
 
-        // Redraw the map
-        //print_map(&map);
-
         // Redraw the map after player movement
         safe_print_map(map);
-
-        //pthread_mutex_lock(&map_mutex);
 
         if (check_collision(map) || direction == 'q') {
             game_over = 1;
         }
-
-        //pthread_mutex_unlock(&map_mutex);
 
 
         if (game_over) {
