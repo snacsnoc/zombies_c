@@ -34,6 +34,10 @@ int move_counter = 0;
 time_t last_player_move_time = 0;
 time_t last_zombie_move_time = 0;
 time_t last_random_key_time = 0;
+time_t current_time = 0;
+
+int zombie_thread_running;
+
 typedef struct {
     char type;   // Type of point on the map ('#' for wall, 'P' for player, etc.)
     int visited; // Flag indicating whether the point has been visited by the
@@ -72,8 +76,8 @@ void print_map(Map *map) {
 
     // Print the score in the top-left corner
     move(0, 0);
-    printw("Score: %d | Moves: %d  |  Zombies: %d |  Big Zombies: %d | lplay mov tim: %d\n", score,
-           move_counter, map->num_zombies, map->num_big_zombies, last_player_move_time);
+    printw("Score: %d | Moves: %d  |  Zombies: %d |  Big Zombies: %d | lzom mov: %d\n", score,
+           move_counter, map->num_zombies, map->num_big_zombies, last_zombie_move_time);
 
     init_pair(1, COLOR_WHITE, COLOR_BLACK);  // white walls
     init_pair(2, COLOR_GREEN, COLOR_BLACK);  // green zombies
@@ -467,6 +471,7 @@ void free_map(Map *map) {
 
 void exit_game(void) {
     endwin();
+    zombie_thread_running = 0;
     exit(1);
 }
 
@@ -474,15 +479,16 @@ void exit_game(void) {
 pthread_t zombie_thread;
 pthread_mutex_t map_mutex;
 
+// Throw zombie movement in a separate thread
 void *zombie_movement(void *arg) {
     Map *map = (Map *) arg;
-    while (1) {
+    while (zombie_thread_running) {
         pthread_mutex_lock(&map_mutex);
         move_zombies(map);
         print_map(map);
         pthread_mutex_unlock(&map_mutex);
         usleep(550000); // Wait 550ms before moving the zombies again
-        //last_zombie_move_time = current_time;
+        last_zombie_move_time = time(NULL);
     }
     pthread_exit(NULL);
 }
@@ -507,12 +513,10 @@ int main() {
     timeout(0); // set non-blocking input mode
     Map map;
     // Start a new thread for the zombie movement
-    //pthread_t zombie_thread;
+    zombie_thread_running = 1;
     pthread_create(&zombie_thread, NULL, &zombie_movement, &map);
     pthread_mutex_init(&map_mutex, NULL);
 
-    // Create the zombie thread
-    pthread_create(&zombie_thread, NULL, &zombie_movement, &map);
 
     // Main game loop
     while (1) {
@@ -527,7 +531,7 @@ int main() {
 
         // Game loop
         while (1) {
-            // time_t current_time = time(NULL);
+            time_t current_time = time(NULL);
 
             // Read input and move the player
             int direction = get_arrow_keys();
@@ -540,6 +544,8 @@ int main() {
                 // TODO: implement character  move limit
                 if (result) {
                     move_counter++;
+                    // Update the time of the last player move
+                    last_player_move_time = current_time;
                 }
 
                 if (result == 0) {
@@ -556,12 +562,14 @@ int main() {
             // Redraw the map
             print_map(&map);
 
-            // Check if the game is over
+            pthread_mutex_lock(&map_mutex);
+
             if (check_collision(&map) || direction == 'q') {
                 game_over = 1;
-
-                //break;
             }
+
+            pthread_mutex_unlock(&map_mutex);
+
 
             if (game_over) {
                 score--;
@@ -595,11 +603,12 @@ int main() {
             // Reset the game_over flag and start a new game
             game_over = 0;
 
-            // Update the time of the last player move
-//                last_player_move_time = current_time;
+
         }
     }
 
 // Clean up the mutex
+    pthread_join(zombie_thread, NULL);
     pthread_mutex_destroy(&map_mutex);
+
 }
