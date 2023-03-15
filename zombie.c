@@ -510,6 +510,7 @@ void *zombie_movement(void *arg) {
     pthread_exit(NULL);
 }
 
+// Setup ncurses modes we need for the game
 void initialize_game() {
     initscr();
     // Enable non-blocking mode
@@ -522,6 +523,8 @@ void initialize_game() {
     cbreak();
     // Seed the random number generator
     srand(time(NULL));
+    timeout(0); // set non-blocking input mode
+
 }
 
 void setup_map(Map *map, int difficulty) {
@@ -537,13 +540,100 @@ void setup_map(Map *map, int difficulty) {
     print_map(map);
 }
 
+// Thread clean up
+void t_cleanup() {
+    pthread_join(zombie_thread, NULL);
+    pthread_mutex_destroy(&map_mutex);
+}
+
+void game_loop(Map *map) {
+    // Game loop
+    while (1) {
+        time_t current_time = time(NULL);
+
+        // Read input and move the player
+        int direction = get_arrow_keys();
+        // lock it if we are updating the map
+        pthread_mutex_lock(&map_mutex);
+        //            // Move the player
+        if (direction != 0) {
+            int result = move_player(map, direction);
+            // Count player moves, must fix counting moving into walls
+            // TODO: implement character  move limit
+            if (result) {
+                move_counter++;
+                // Update the time of the last player move
+                last_player_move_time = current_time;
+            }
+
+            if (result == 0) {
+                // do something here
+            }
+            if (check_goal(map)) {
+                game_win = 1;
+            }
+
+
+        }
+        pthread_mutex_unlock(&map_mutex);
+
+        // Redraw the map
+        //print_map(&map);
+
+        // Redraw the map after player movement
+        safe_print_map(map);
+
+        //pthread_mutex_lock(&map_mutex);
+
+        if (check_collision(map) || direction == 'q') {
+            game_over = 1;
+        }
+
+        //pthread_mutex_unlock(&map_mutex);
+
+
+        if (game_over) {
+            score--;
+            int result = display_lose_screen();
+
+            switch (result) {
+                case 1: //try again
+                    break;
+                case 2: // main menu
+                    break;
+                case 3: //quit
+                    exit_game();
+                    break;
+            }
+
+
+        } else if (game_win) {
+            score++;
+            int result = display_win_screen();
+            switch (result) {
+                case 1: //try again
+                    break;
+                case 2: // main menu
+                    break;
+                case 3: //quit
+                    exit_game();
+                    break;
+            }
+        }
+
+        // Reset the game_over flag and start a new game
+        game_over = 0;
+
+
+    }
+}
+
 int main() {
 
     initialize_game();
     // Display menu and get user's choice
     int difficulty = display_menu();
 
-    timeout(0); // set non-blocking input mode
     Map map;
     // Start a new thread for the zombie movement
     zombie_thread_running = 1;
@@ -554,90 +644,11 @@ int main() {
     // Main game loop
     while (1) {
         setup_map(&map, difficulty);
-
-        // Game loop
-        while (1) {
-            time_t current_time = time(NULL);
-
-            // Read input and move the player
-            int direction = get_arrow_keys();
-            // lock it if we are updating the map
-            pthread_mutex_lock(&map_mutex);
-            //            // Move the player
-            if (direction != 0) {
-                int result = move_player(&map, direction);
-                // Count player moves, must fix counting moving into walls
-                // TODO: implement character  move limit
-                if (result) {
-                    move_counter++;
-                    // Update the time of the last player move
-                    last_player_move_time = current_time;
-                }
-
-                if (result == 0) {
-                    // do something here
-                }
-                if (check_goal(&map)) {
-                    game_win = 1;
-                }
-
-
-            }
-            pthread_mutex_unlock(&map_mutex);
-
-            // Redraw the map
-            //print_map(&map);
-
-            // Redraw the map after player movement
-            safe_print_map(&map);
-
-            //pthread_mutex_lock(&map_mutex);
-
-            if (check_collision(&map) || direction == 'q') {
-                game_over = 1;
-            }
-
-            //pthread_mutex_unlock(&map_mutex);
-
-
-            if (game_over) {
-                score--;
-                int result = display_lose_screen();
-
-                switch (result) {
-                    case 1: //try again
-                        break;
-                    case 2: // main menu
-                        break;
-                    case 3: //quit
-                        exit_game();
-                        break;
-                }
-
-
-            } else if (game_win) {
-                score++;
-                int result = display_win_screen();
-                switch (result) {
-                    case 1: //try again
-                        break;
-                    case 2: // main menu
-                        break;
-                    case 3: //quit
-                        exit_game();
-                        break;
-                }
-            }
-
-            // Reset the game_over flag and start a new game
-            game_over = 0;
-
-
-        }
+        game_loop(&map);
     }
 
-// Clean up the mutex
-    pthread_join(zombie_thread, NULL);
-    pthread_mutex_destroy(&map_mutex);
+    t_cleanup();
 
 }
+
+
