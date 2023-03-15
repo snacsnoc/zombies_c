@@ -4,6 +4,9 @@
 #include <time.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <math.h> //used for distance()
+
+#define MIN_DISTANCE 10 //min distance to place goal vs player
 
 #define VERSION 0.1.2
 #define MAP_SIZE 35
@@ -85,8 +88,8 @@ void print_map(Map *map) {
 
     // Print the score in the top-left corner
     move(0, 0);
-    printw("Score: %d | Moves: %d  |  Zombies: %d |  Big Zombies: %d | lzom mov: %d\n", score,
-           move_counter, map->num_zombies, map->num_big_zombies, last_zombie_move_time);
+    printw("Score: %d | Moves: %d  |  Zombies: %d |  Big Zombies: %d | collision?: %d\n", score,
+           move_counter, map->num_zombies, map->num_big_zombies, game_over);
 
     init_pair(1, COLOR_WHITE, COLOR_BLACK);  // white walls
     init_pair(2, COLOR_GREEN, COLOR_BLACK);  // green zombies
@@ -172,7 +175,14 @@ void place_player(Map *map) {
     map->points[x][y].type = PLAYER_CHAR;
 }
 
-//TODO: place goal minimum distance away from player
+
+
+double distance(int x1, int y1, int x2, int y2) {
+    int dx = x1 - x2;
+    int dy = y1 - y2;
+    return sqrt(dx * dx + dy * dy);
+}
+
 void place_goal(Map *map) {
     int x, y;
 
@@ -180,11 +190,12 @@ void place_goal(Map *map) {
     do {
         x = rand() % (MAP_SIZE - 2) + 1;
         y = rand() % (MAP_SIZE - 2) + 1;
-    } while (map->points[x][y].type != ' ');
+    } while (map->points[x][y].type != ' ' || distance(x, y, map->player_x, map->player_y) < MIN_DISTANCE);
     map->goal_x = x;
     map->goal_y = y;
     map->points[x][y].type = END_CHAR;
 }
+
 
 // Initialize zombies on map
 void place_zombies(Map *map, int num_zombies) {
@@ -498,19 +509,19 @@ void exit_game(void) {
 }
 
 
-// Throw zombie movement in a separate thread
+// Independent zombie movement
 void *zombie_movement(void *arg) {
     Map *map = (Map *) arg;
     while (zombie_thread_running) {
         pthread_mutex_lock(&map_mutex);
         move_zombies(map);
-        //print_map(map);
-        pthread_mutex_unlock(&map_mutex);
-        safe_print_map(map);
-        // Check for collisions after the zombies move
+        // TODO: this doesn't work
         if (check_collision(map)) {
             game_over = 1;
         }
+        pthread_mutex_unlock(&map_mutex);
+        safe_print_map(map);
+
         usleep(500000); // Wait 500ms before moving the zombies again
         last_zombie_move_time = time(NULL);
     }
@@ -562,32 +573,28 @@ void t_cleanup() {
  * and weird errors.
  */
 void game_loop(Map *map) {
-    while (!game_over && !game_win) {
+    while (1) {
         time_t current_time = time(NULL);
 
         // Read input and move the player
         int direction = get_arrow_keys();
         // lock it if we are updating the map
         pthread_mutex_lock(&map_mutex);
-        //            // Move the player
+        // Move the player
         if (direction != 0) {
             int result = move_player(map, direction);
             // Count player moves, must fix counting moving into walls
-            // TODO: implement character  move limit
+            // TODO: implement character move limit
             if (result) {
                 move_counter++;
                 // Update the time of the last player move
                 last_player_move_time = current_time;
             }
 
-            if (result == 0) {
-                // do something here
-            }
             if (check_goal(map)) {
                 game_win = 1;
+                break;
             }
-
-
         }
         pthread_mutex_unlock(&map_mutex);
 
@@ -596,43 +603,40 @@ void game_loop(Map *map) {
 
         if (check_collision(map) || direction == 'q') {
             game_over = 1;
+            break;
         }
-
-
-        if (game_over) {
-            score--;
-            int result = display_lose_screen();
-
-            switch (result) {
-                case 1: //try again
-                    break;
-                case 2: // main menu
-                    break;
-                case 3: //quit
-                    exit_game();
-                    break;
-            }
-
-
-        } else if (game_win) {
-            score++;
-            int result = display_win_screen();
-            switch (result) {
-                case 1: //try again
-                    break;
-                case 2: // main menu
-                    break;
-                case 3: //quit
-                    exit_game();
-                    break;
-            }
-        }
-
-        // Reset the game_over flag and start a new game
-        game_over = 0;
-
-
     }
+
+    if (game_over) {
+        score--;
+        int result = display_lose_screen();
+
+        switch (result) {
+            case 1: //try again
+                break;
+            case 2: // main menu
+                break;
+            case 3: //quit
+                exit_game();
+                break;
+        }
+    } else if (game_win) {
+        score++;
+        int result = display_win_screen();
+        switch (result) {
+            case 1: //try again
+                break;
+            case 2: // main menu
+                break;
+            case 3: //quit
+                exit_game();
+                break;
+        }
+    }
+
+    // Reset the game_over and game_win flags and start a new game
+    game_over = 0;
+    game_win = 0;
 }
 
 int main() {
