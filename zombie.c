@@ -31,15 +31,14 @@ int move_counter = 0;
 int game_over = 0;
 int game_win = 0;
 // Keep track of the time of the last player move and the last zombie move
-// and last random send key event
 time_t last_player_move_time = 0;
 time_t last_zombie_move_time = 0;
-time_t last_random_key_time = 0;
 time_t current_time = 0;
 
 int zombie_thread_running;
 
 // Thread for any zombie/player movements
+// TODO: check for all/any movements
 //pthread_cond_t movement_cond;
 //pthread_mutex_t movement_mutex;
 
@@ -78,8 +77,7 @@ void init_map(Map *map) {
     map->num_zombies = 0;
     map->num_big_zombies = 0;
 }
-// Determine how we're printing to screen
-
+// Display game map
 void print_map(Map *map) {
     clear(); // Clear the screen
 
@@ -163,6 +161,7 @@ void place_player(Map *map) {
     map->points[x][y].type = PLAYER_CHAR;
 }
 
+//TODO: place goal minimum distance away from player
 void place_goal(Map *map) {
     int x, y;
 
@@ -176,6 +175,7 @@ void place_goal(Map *map) {
     map->points[x][y].type = END_CHAR;
 }
 
+// Initialize zombies on map
 void place_zombies(Map *map, int num_zombies) {
     int i, x, y;
     for (i = 0; i < num_zombies; i++) {
@@ -318,6 +318,7 @@ void move_zombies(Map *map) {
     }
 }
 
+// Randomly move zombie
 void random_move_zombies(Map *map) {
     for (int i = 0; i < map->num_zombies; i++) {
         // Randomly select a direction for the zombie to move in
@@ -351,6 +352,7 @@ void random_move_zombies(Map *map) {
     }
 }
 
+// Read from buffer for player input
 int get_arrow_keys() {
     char buf = 0;
     int direction = 0;
@@ -548,7 +550,7 @@ void t_cleanup() {
 
 void game_loop(Map *map) {
     // Game loop
-    while (1) {
+    while (!game_over && !game_win) {
         time_t current_time = time(NULL);
 
         // Read input and move the player
