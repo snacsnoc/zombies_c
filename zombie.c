@@ -27,8 +27,9 @@
 #define DOWN_CHAR 66
 
 int score = 0;
-
 int move_counter = 0;
+int game_over = 0;
+int game_win = 0;
 // Keep track of the time of the last player move and the last zombie move
 // and last random send key event
 time_t last_player_move_time = 0;
@@ -37,6 +38,14 @@ time_t last_random_key_time = 0;
 time_t current_time = 0;
 
 int zombie_thread_running;
+
+// Thread for any zombie/player movements
+//pthread_cond_t movement_cond;
+//pthread_mutex_t movement_mutex;
+
+
+pthread_t zombie_thread;
+pthread_mutex_t map_mutex;
 
 typedef struct {
     char type;   // Type of point on the map ('#' for wall, 'P' for player, etc.)
@@ -469,6 +478,12 @@ void free_map(Map *map) {
     free(map->points);
 }
 
+void safe_print_map(Map *map) {
+    pthread_mutex_lock(&map_mutex);
+    print_map(map);
+    pthread_mutex_unlock(&map_mutex);
+}
+
 void exit_game(void) {
     endwin();
     zombie_thread_running = 0;
@@ -476,26 +491,26 @@ void exit_game(void) {
 }
 
 
-pthread_t zombie_thread;
-pthread_mutex_t map_mutex;
-
 // Throw zombie movement in a separate thread
 void *zombie_movement(void *arg) {
     Map *map = (Map *) arg;
     while (zombie_thread_running) {
         pthread_mutex_lock(&map_mutex);
         move_zombies(map);
-        print_map(map);
+        //print_map(map);
         pthread_mutex_unlock(&map_mutex);
-        usleep(550000); // Wait 550ms before moving the zombies again
+        safe_print_map(map);
+        // Check for collisions after the zombies move
+        if (check_collision(map)) {
+            game_over = 1;
+        }
+        usleep(500000); // Wait 500ms before moving the zombies again
         last_zombie_move_time = time(NULL);
     }
     pthread_exit(NULL);
 }
 
-int main() {
-    int game_over = 0;
-    int game_win = 0;
+void initialize_game() {
     initscr();
     // Enable non-blocking mode
     nodelay(stdscr, TRUE);
@@ -507,6 +522,24 @@ int main() {
     cbreak();
     // Seed the random number generator
     srand(time(NULL));
+}
+
+void setup_map(Map *map, int difficulty) {
+    // Map map;
+    init_map(map);
+    place_walls(map);
+    place_player(map);
+    place_goal(map);
+
+    // Set number of zombies based on difficulty
+    int num_zombies = diffset_zombies(difficulty);
+    place_zombies(map, num_zombies);
+    print_map(map);
+}
+
+int main() {
+
+    initialize_game();
     // Display menu and get user's choice
     int difficulty = display_menu();
 
@@ -520,14 +553,7 @@ int main() {
 
     // Main game loop
     while (1) {
-        // Map map;
-        init_map(&map);
-        place_walls(&map);
-        place_player(&map);
-        place_goal(&map);
-        int num_zombies = diffset_zombies(difficulty);
-        place_zombies(&map, num_zombies);
-        print_map(&map);
+        setup_map(&map, difficulty);
 
         // Game loop
         while (1) {
@@ -560,15 +586,18 @@ int main() {
             pthread_mutex_unlock(&map_mutex);
 
             // Redraw the map
-            print_map(&map);
+            //print_map(&map);
 
-            pthread_mutex_lock(&map_mutex);
+            // Redraw the map after player movement
+            safe_print_map(&map);
+
+            //pthread_mutex_lock(&map_mutex);
 
             if (check_collision(&map) || direction == 'q') {
                 game_over = 1;
             }
 
-            pthread_mutex_unlock(&map_mutex);
+            //pthread_mutex_unlock(&map_mutex);
 
 
             if (game_over) {
