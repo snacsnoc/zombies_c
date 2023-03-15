@@ -1,3 +1,6 @@
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "cert-msc50-cpp"
+
 #include <ncurses.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,10 +9,14 @@
 #include <pthread.h>
 #include <math.h> //used for distance()
 
-#define MIN_DISTANCE 10 //min distance to place goal vs player
+#define MIN_DISTANCE 5 //min distance to place goal vs player
 
-#define VERSION 0.1.2
+#define VERSION 0.1.3
 #define MAP_SIZE 35
+#define ZOMBIE_MOVE_TIME 250000
+#define MONITOR_INTERVAL 10000
+#define MAP_WIDTH 40
+#define MAP_HEIGHT 30
 #define WALL_CHAR '#'
 #define PLAYER_CHAR 'P'
 #define END_CHAR 'E'
@@ -56,7 +63,7 @@ typedef struct {
 } Point;
 
 typedef struct {
-    Point points[MAP_SIZE][MAP_SIZE];
+    Point points[MAP_HEIGHT][MAP_WIDTH];
     int player_x;
     int player_y;
     int goal_x;
@@ -71,8 +78,8 @@ typedef struct {
 // Create a blank map
 void init_map(Map *map) {
     int i, j;
-    for (i = 0; i < MAP_SIZE; i++) {
-        for (j = 0; j < MAP_SIZE; j++) {
+    for (i = 0; i < MAP_HEIGHT; i++) {
+        for (j = 0; j < MAP_WIDTH; j++) {
             map->points[i][j].type = ' ';
             map->points[i][j].visited = 0;
         }
@@ -82,14 +89,15 @@ void init_map(Map *map) {
     map->num_big_zombies = 0;
 }
 
+
 // Display game map
 void print_map(Map *map) {
     clear(); // Clear the screen
 
     // Print the score in the top-left corner
     move(0, 0);
-    printw("Score: %d | Moves: %d  |  Zombies: %d |  Big Zombies: %d | collision?: %d\n", score,
-           move_counter, map->num_zombies, map->num_big_zombies, game_over);
+    printw("Score: %d | Moves: %d  |  Zombies: %d |  Big Zombies: %d | gameover: %d,gamewin %d\n", score,
+           move_counter, map->num_zombies, map->num_big_zombies, game_over, game_win);
 
     init_pair(1, COLOR_WHITE, COLOR_BLACK);  // white walls
     init_pair(2, COLOR_GREEN, COLOR_BLACK);  // green zombies
@@ -97,8 +105,8 @@ void print_map(Map *map) {
     init_pair(4, COLOR_BLUE, COLOR_BLACK);   // blue player
 
 
-    for (int i = 0; i < MAP_SIZE; i++) {
-        for (int j = 0; j < MAP_SIZE; j++) {
+    for (int i = 0; i < MAP_HEIGHT; i++) {
+        for (int j = 0; j < MAP_WIDTH; j++) {
             Point point = map->points[i][j];
             if (i == map->player_x && j == map->player_y) {
                 attron(A_STANDOUT);
@@ -148,18 +156,21 @@ void safe_print_map(Map *map) {
 void place_walls(Map *map) {
     int i, j;
 
-    for (i = 0; i < MAP_SIZE; i++) {
+    for (i = 0; i < MAP_HEIGHT; i++) {
         map->points[i][0].type = WALL_CHAR;
-        map->points[i][MAP_SIZE - 1].type = WALL_CHAR;
+        map->points[i][MAP_WIDTH - 1].type = WALL_CHAR;
+    }
+
+    for (i = 0; i < MAP_WIDTH; i++) {
         map->points[0][i].type = WALL_CHAR;
-        map->points[MAP_SIZE - 1][i].type = WALL_CHAR;
+        map->points[MAP_HEIGHT - 1][i].type = WALL_CHAR;
     }
 
     // Add random walls in center of map
-    for (i = 0; i < MAP_SIZE / 2; i++) {
-        j = rand() % (MAP_SIZE - 2) + 1;
+    for (i = 0; i < MAP_HEIGHT / 2; i++) {
+        j = rand() % (MAP_WIDTH - 2) + 1;
         map->points[i][j].type = WALL_CHAR;
-        map->points[MAP_SIZE - i - 1][MAP_SIZE - j - 1].type = WALL_CHAR;
+        map->points[MAP_HEIGHT - i - 1][MAP_WIDTH - j - 1].type = WALL_CHAR;
     }
 }
 
@@ -167,8 +178,8 @@ void place_walls(Map *map) {
 void place_player(Map *map) {
     int x, y;
     do {
-        x = rand() % (MAP_SIZE - 2) + 1;
-        y = rand() % (MAP_SIZE - 2) + 1;
+        x = rand() % (MAP_WIDTH - 2) + 1;
+        y = rand() % (MAP_HEIGHT - 2) + 1;
     } while (map->points[x][y].type != ' ');
     map->player_x = x;
     map->player_y = y;
@@ -176,20 +187,21 @@ void place_player(Map *map) {
 }
 
 
-
+// calculate magnitude
 double distance(int x1, int y1, int x2, int y2) {
     int dx = x1 - x2;
     int dy = y1 - y2;
     return sqrt(dx * dx + dy * dy);
 }
 
+// place goal in relation to player start point
 void place_goal(Map *map) {
     int x, y;
 
     // Find empty coords to place the end goal
     do {
-        x = rand() % (MAP_SIZE - 2) + 1;
-        y = rand() % (MAP_SIZE - 2) + 1;
+        x = rand() % (MAP_WIDTH - 2) + 1;
+        y = rand() % (MAP_HEIGHT - 2) + 1;
     } while (map->points[x][y].type != ' ' || distance(x, y, map->player_x, map->player_y) < MIN_DISTANCE);
     map->goal_x = x;
     map->goal_y = y;
@@ -202,8 +214,8 @@ void place_zombies(Map *map, int num_zombies) {
     int i, x, y;
     for (i = 0; i < num_zombies; i++) {
         do {
-            x = rand() % (MAP_SIZE - 2) + 1;
-            y = rand() % (MAP_SIZE - 2) + 1;
+            x = rand() % (MAP_WIDTH - 2) + 1;
+            y = rand() % (MAP_HEIGHT - 2) + 1;
         } while (map->points[x][y].type != ' ');
         map->zombie_x[i] = x;
         map->zombie_y[i] = y;
@@ -236,7 +248,7 @@ int move_player(Map *map, int direction) {
             return 0;
     }
 
-    if (new_x < 0 || new_x >= MAP_SIZE || new_y < 0 || new_y >= MAP_SIZE) {
+    if (new_x < 0 || new_x >= MAP_WIDTH || new_y < 0 || new_y >= MAP_HEIGHT) {
         return 0; // Can't move outside the map
     }
 
@@ -256,12 +268,17 @@ int move_player(Map *map, int direction) {
 // Move all the zombies on the map one step closer to the player
 // Zombies eat one another if on the same x y and change characters
 void move_zombies(Map *map) {
+    int eaten_zombies[map->num_zombies];
+    int eaten_zombie_count = 0;
+
     for (int i = 0; i < map->num_zombies; i++) {
         int old_x = map->zombie_x[i];
         int old_y = map->zombie_y[i];
         int new_x = old_x;
         int new_y = old_y;
         int eaten_zombie = -1;
+        // Check if the zombie is a big zombie
+        int is_big_zombie = (map->points[old_x][old_y].type == BIG_ZOMBIE_CHAR);
 
         // Check if this zombie collides with another zombie
         for (int j = 0; j < map->num_zombies; j++) {
@@ -274,8 +291,7 @@ void move_zombies(Map *map) {
             }
         }
 
-        // Check if the zombie is a big zombie
-        int is_big_zombie = (map->points[old_x][old_y].type == BIG_ZOMBIE_CHAR);
+
 
         // Move the zombie closer to the player's X position
         if (map->player_x < old_x) {
@@ -284,18 +300,29 @@ void move_zombies(Map *map) {
             new_x++;
         }
 
+        // Check if the new X position is inside a wall
+        if (map->points[new_x][old_y].type == WALL_CHAR) {
+            new_x = old_x; // Reset the X position if it's inside a wall
+        }
+
         // Move the zombie closer to the player's Y position
         if (map->player_y < old_y) {
             new_y--;
         } else if (map->player_y > old_y) {
             new_y++;
         }
+
+        // Check if the new Y position is inside a wall
+        if (map->points[old_x][new_y].type == WALL_CHAR) {
+            new_y = old_y; // Reset the Y position if it's inside a wall
+        }
+
         /* Remove this comment to forbid zombies to eat the player
                 if (new_x == map->player_x && new_y == map->player_y) {
                     continue; // Don't move onto the player's square
                 }
         */
-        if (new_x < 0 || new_x >= MAP_SIZE || new_y < 0 || new_y >= MAP_SIZE) {
+        if (new_x < 0 || new_x >= MAP_WIDTH || new_y < 0 || new_y >= MAP_HEIGHT) {
             continue; // Can't move outside the map
         }
         // TODO: when zombies move off of trail char, trail char gets erased
@@ -307,17 +334,14 @@ void move_zombies(Map *map) {
             map->points[old_x][old_y].type = EMPTY_CHAR;
         }
 
-
-        // TODO: Zombies can get stuck behind walls
-        if (map->points[new_x][new_y].type == WALL_CHAR) {
-            continue; // Can't move into a wall
-        }
+        ¡
 
         if (map->points[new_x][new_y].type == END_CHAR) {
             continue; // Can't move into end goal
         }
         map->zombie_x[i] = new_x;
         map->zombie_y[i] = new_y;
+
 
         // If this zombie ate another zombie, remove the eaten zombie from the map
         // Big zombies cannot be eaten
@@ -332,13 +356,36 @@ void move_zombies(Map *map) {
             map->num_big_zombies++;
             map->points[map->zombie_x[i]][map->zombie_y[i]].type = BIG_ZOMBIE_CHAR;
             map->big_zombies[map->num_big_zombies - 1] = i;
+            eaten_zombies[eaten_zombie_count++] = eaten_zombie;
+
         } else {
             // Show applicable zombie type
             map->points[new_x][new_y].type =
                     is_big_zombie ? BIG_ZOMBIE_CHAR : ZOMBIE_CHAR;
         }
     }
+    // Update eaten zombies' positions
+    for (int i = 0; i < eaten_zombie_count; i++) {
+        int eaten_zombie = eaten_zombies[i];
+        map->zombie_x[eaten_zombie] = -1;
+        map->zombie_y[eaten_zombie] = -1;
+    }
+
+    // Remove eaten zombies from the map
+    if (eaten_zombie_count > 0) {
+        int new_num_zombies = 0;
+        for (int i = 0; i < map->num_zombies; i++) {
+            if (map->zombie_x[i] != -1 && map->zombie_y[i] != -1) {
+                map->zombie_x[new_num_zombies] = map->zombie_x[i];
+                map->zombie_y[new_num_zombies++] = map->zombie_y[i];
+            }
+        }
+        map->num_zombies = new_num_zombies;
+
+    }
+
 }
+
 
 // Randomly move zombie
 void random_move_zombies(Map *map) {
@@ -349,24 +396,26 @@ void random_move_zombies(Map *map) {
         // Update the zombie's position based on the selected direction
         switch (direction) {
             case DIRECTION_UP:
-                if (map->zombie_x[i] > 1 && map->points[map->zombie_x[i] - 1][map->zombie_y[i]].type == EMPTY_CHAR) {
+                if (map->zombie_x[i] > 1 &&
+                    map->points[map->zombie_x[i] - 1][map->zombie_y[i]].type == EMPTY_CHAR) {
                     map->zombie_x[i] -= 1;
                 }
                 break;
             case DIRECTION_RIGHT:
-                if (map->zombie_y[i] < MAP_SIZE - 2 &&
+                if (map->zombie_y[i] < MAP_HEIGHT - 2 &&
                     map->points[map->zombie_x[i]][map->zombie_y[i] + 1].type == EMPTY_CHAR) {
                     map->zombie_y[i] += 1;
                 }
                 break;
             case DIRECTION_DOWN:
-                if (map->zombie_x[i] < MAP_SIZE - 2 &&
+                if (map->zombie_x[i] < MAP_WIDTH - 2 &&
                     map->points[map->zombie_x[i] + 1][map->zombie_y[i]].type == EMPTY_CHAR) {
                     map->zombie_x[i] += 1;
                 }
                 break;
             case DIRECTION_LEFT:
-                if (map->zombie_y[i] > 1 && map->points[map->zombie_x[i]][map->zombie_y[i] - 1].type == EMPTY_CHAR) {
+                if (map->zombie_y[i] > 1 &&
+                    map->points[map->zombie_x[i]][map->zombie_y[i] - 1].type == EMPTY_CHAR) {
                     map->zombie_y[i] -= 1;
                 }
                 break;
@@ -496,7 +545,7 @@ int diffset_zombies(int difficulty) {
 
 // Free the memory used by the map
 void free_map(Map *map) {
-    for (int i = 0; i < MAP_SIZE; i++) {
+    for (int i = 0; i < MAP_WIDTH; i++) {
         free(map->points[i]);
     }
     free(map->points);
@@ -515,14 +564,14 @@ void *zombie_movement(void *arg) {
     while (zombie_thread_running) {
         pthread_mutex_lock(&map_mutex);
         move_zombies(map);
-        // TODO: this doesn't work
+//        // TODO: this doesn't work
         if (check_collision(map)) {
             game_over = 1;
         }
         pthread_mutex_unlock(&map_mutex);
         safe_print_map(map);
 
-        usleep(500000); // Wait 500ms before moving the zombies again
+        usleep(ZOMBIE_MOVE_TIME); // Wait 500ms before moving the zombies again
         last_zombie_move_time = time(NULL);
     }
     pthread_exit(NULL);
@@ -558,11 +607,47 @@ void setup_map(Map *map, int difficulty) {
     print_map(map);
 }
 
+// Reinitialize map and reset counters
+void reset_game(Map *map, int difficulty) {
+    game_over = 0;
+    game_win = 0;
+    move_counter = 0;
+    score = 0;
+    setup_map(map, difficulty);
+}
+
 // Thread clean up
 void t_cleanup() {
     pthread_join(zombie_thread, NULL);
     pthread_mutex_destroy(&map_mutex);
 }
+
+// Collision and goal checking monitor
+void *monitor_game_state(void *arg) {
+    Map *map = (Map *) arg;
+    while (1) {
+        pthread_mutex_lock(&map_mutex);
+
+        // Check for game over condition
+        if (check_collision(map)) {
+            game_over = 1;
+            pthread_mutex_unlock(&map_mutex);
+            break;
+        }
+
+        // Check for game win condition
+        if (check_goal(map)) {
+            game_win = 1;
+            pthread_mutex_unlock(&map_mutex);
+            break;
+        }
+
+        pthread_mutex_unlock(&map_mutex);
+        usleep(MONITOR_INTERVAL);  // Wait a short interval before checking again
+    }
+    pthread_exit(NULL);
+}
+
 
 /* This is where the action is
  * a thread is created for zombie movement, so
@@ -573,7 +658,7 @@ void t_cleanup() {
  * and weird errors.
  */
 void game_loop(Map *map) {
-    while (1) {
+    while (!game_over && !game_win) {
         time_t current_time = time(NULL);
 
         // Read input and move the player
@@ -591,17 +676,27 @@ void game_loop(Map *map) {
                 last_player_move_time = current_time;
             }
 
-            if (check_goal(map)) {
-                game_win = 1;
-                break;
-            }
+//            if (check_goal(map)) {
+//                game_win = 1;
+//                break;
+//            }
         }
         pthread_mutex_unlock(&map_mutex);
 
         // Redraw the map after player movement
         safe_print_map(map);
+        // Check for game over condition
+        if (check_collision(map)) {
+            game_over = 1;
+            break;
+        }
 
-        if (check_collision(map) || direction == 'q') {
+        // Check for game win condition
+        if (check_goal(map)) {
+            game_win = 1;
+            break;
+        }
+        if (direction == 'q') {
             game_over = 1;
             break;
         }
@@ -615,6 +710,7 @@ void game_loop(Map *map) {
             case 1: //try again
                 break;
             case 2: // main menu
+                //fix this
                 break;
             case 3: //quit
                 exit_game();
@@ -627,6 +723,7 @@ void game_loop(Map *map) {
             case 1: //try again
                 break;
             case 2: // main menu
+                //fix this
                 break;
             case 3: //quit
                 exit_game();
@@ -650,11 +747,12 @@ int main() {
     zombie_thread_running = 1;
     pthread_create(&zombie_thread, NULL, &zombie_movement, &map);
     pthread_mutex_init(&map_mutex, NULL);
-
+//    pthread_t monitor_thread;
+//    pthread_create(&monitor_thread, NULL, &monitor_game_state, &map);
 
     // Main game loop
     while (1) {
-        setup_map(&map, difficulty);
+        reset_game(&map, difficulty);
         game_loop(&map);
     }
     t_cleanup();
@@ -662,3 +760,4 @@ int main() {
 }
 
 
+#pragma clang diagnostic pop
