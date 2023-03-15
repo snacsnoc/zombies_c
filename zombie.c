@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <pthread.h>
 
-#define VERSION 0.1.1
+#define VERSION 0.1.2
 #define MAP_SIZE 35
 #define WALL_CHAR '#'
 #define PLAYER_CHAR 'P'
@@ -646,7 +646,6 @@ int main() {
         setup_map(&map, difficulty);
         game_loop(&map);
     }
-
     t_cleanup();
 
 }
