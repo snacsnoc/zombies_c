@@ -212,6 +212,11 @@ void place_goal(Map *map) {
 // Initialize zombies on map
 void place_zombies(Map *map, int num_zombies) {
     int i, x, y;
+    //Prevent garbage values on initialization
+    for (int i = 0; i < num_zombies; i++) {
+        map->zombie_x[i] = -1;
+        map->zombie_y[i] = -1;
+    }
     for (i = 0; i < num_zombies; i++) {
         do {
             x = rand() % (MAP_WIDTH - 2) + 1;
@@ -334,7 +339,7 @@ void move_zombies(Map *map) {
             map->points[old_x][old_y].type = EMPTY_CHAR;
         }
 
-        ¡
+
 
         if (map->points[new_x][new_y].type == END_CHAR) {
             continue; // Can't move into end goal
@@ -564,11 +569,15 @@ void *zombie_movement(void *arg) {
     while (zombie_thread_running) {
         pthread_mutex_lock(&map_mutex);
         move_zombies(map);
-//        // TODO: this doesn't work
+        pthread_mutex_unlock(&map_mutex);
+        // Check for game over condition
         if (check_collision(map)) {
             game_over = 1;
+            //exit_game();
+            break;
         }
-        pthread_mutex_unlock(&map_mutex);
+
+
         safe_print_map(map);
 
         usleep(ZOMBIE_MOVE_TIME); // Wait 500ms before moving the zombies again
@@ -625,27 +634,27 @@ void t_cleanup() {
 // Collision and goal checking monitor
 void *monitor_game_state(void *arg) {
     Map *map = (Map *) arg;
+
     while (1) {
         pthread_mutex_lock(&map_mutex);
 
         // Check for game over condition
         if (check_collision(map)) {
             game_over = 1;
-            pthread_mutex_unlock(&map_mutex);
-            break;
         }
 
         // Check for game win condition
         if (check_goal(map)) {
             game_win = 1;
-            pthread_mutex_unlock(&map_mutex);
-            break;
         }
 
         pthread_mutex_unlock(&map_mutex);
-        usleep(MONITOR_INTERVAL);  // Wait a short interval before checking again
+
+        // Sleep for a certain time before checking the game state again
+        usleep(MONITOR_INTERVAL);
     }
-    pthread_exit(NULL);
+
+    return NULL;
 }
 
 
@@ -749,6 +758,7 @@ int main() {
     pthread_mutex_init(&map_mutex, NULL);
 //    pthread_t monitor_thread;
 //    pthread_create(&monitor_thread, NULL, &monitor_game_state, &map);
+
 
     // Main game loop
     while (1) {
