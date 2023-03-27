@@ -318,7 +318,7 @@ void move_zombies(Map *map) {
 
         } else {
             // Wander code
-            int dir = rand() % 8; // Choose a random direction (0: up, 1: right, 2: down, 3: left)
+            int dir = rand() % 4; // Choose a random direction (0: up, 1: right, 2: down, 3: left)
             switch (dir) {
                 case 0: // up
                     new_x--;
@@ -356,7 +356,6 @@ void move_zombies(Map *map) {
             continue; // Can't move outside the map
         }
         // TODO: when zombies move off of trail char, trail char gets erased
-        // TODO: zombies disappear randomly
         // This mostly works
         if (map->points[new_x][new_y].type == TRAIL_CHAR) {
             map->points[old_x][old_y].type = TRAIL_CHAR;
