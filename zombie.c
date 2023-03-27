@@ -297,6 +297,8 @@ void move_zombies(Map *map) {
         // Calculate distance from zombie to player
         int dist = distance(old_x, old_y, map->player_x, map->player_y);
 
+
+
         // Zombies chase the player if within a magnitude of 10
         if (dist <= 10) {
             // Move the zombie closer to the player's X position
@@ -306,11 +308,6 @@ void move_zombies(Map *map) {
                 new_x++;
             }
 
-            // Check if the new X position is inside a wall
-            if (map->points[new_x][old_y].type == WALL_CHAR) {
-                new_x = old_x; // Reset the X position if it's inside a wall
-            }
-
             // Move the zombie closer to the player's Y position
             if (map->player_y < old_y) {
                 new_y--;
@@ -318,10 +315,7 @@ void move_zombies(Map *map) {
                 new_y++;
             }
 
-            // Check if the new Y position is inside a wall
-            if (map->points[old_x][new_y].type == WALL_CHAR) {
-                new_y = old_y; // Reset the Y position if it's inside a wall
-            }
+
         } else {
             // Wander code
             int dir = rand() % 8; // Choose a random direction (0: up, 1: right, 2: down, 3: left)
@@ -349,6 +343,15 @@ void move_zombies(Map *map) {
                     continue; // Don't move onto the player's square
                 }
         */
+        // Check if the new X position is inside a wall
+        if (map->points[new_x][old_y].type == WALL_CHAR) {
+            new_x = old_x; // Reset the X position if it's inside a wall
+        }
+
+        // Check if the new Y position is inside a wall
+        if (map->points[old_x][new_y].type == WALL_CHAR) {
+            new_y = old_y; // Reset the Y position if it's inside a wall
+        }
         if (new_x < 0 || new_x >= MAP_WIDTH || new_y < 0 || new_y >= MAP_HEIGHT) {
             continue; // Can't move outside the map
         }
