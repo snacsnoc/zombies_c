@@ -11,8 +11,7 @@
 
 #define MIN_DISTANCE 5 //min distance to place goal vs player
 
-#define VERSION 0.1.3
-#define MAP_SIZE 35
+#define VERSION "0.1.3"
 #define ZOMBIE_MOVE_TIME 250000
 #define MONITOR_INTERVAL 10000
 #define MAP_WIDTH 40
@@ -295,6 +294,7 @@ void move_zombies(Map *map) {
             }
         }
 
+        // Calculate distance from zombie to player
         int dist = distance(old_x, old_y, map->player_x, map->player_y);
 
         // Zombies chase the player if within a magnitude of 10
@@ -322,9 +322,9 @@ void move_zombies(Map *map) {
             if (map->points[old_x][new_y].type == WALL_CHAR) {
                 new_y = old_y; // Reset the Y position if it's inside a wall
             }
-        }else{
+        } else {
             // Wander code
-            int dir = rand() % 4; // Choose a random direction (0: up, 1: right, 2: down, 3: left)
+            int dir = rand() % 8; // Choose a random direction (0: up, 1: right, 2: down, 3: left)
             switch (dir) {
                 case 0: // up
                     new_x--;
@@ -336,6 +336,10 @@ void move_zombies(Map *map) {
                     new_x++;
                     break;
                 case 3: // left
+                    new_y--;
+                    break;
+                default:
+                    new_x++;
                     new_y--;
                     break;
             }
@@ -408,43 +412,6 @@ void move_zombies(Map *map) {
 
 }
 
-
-// Randomly move zombie
-void random_move_zombies(Map *map) {
-    for (int i = 0; i < map->num_zombies; i++) {
-        // Randomly select a direction for the zombie to move in
-        int direction = rand() % 4 + 1;
-
-        // Update the zombie's position based on the selected direction
-        switch (direction) {
-            case DIRECTION_UP:
-                if (map->zombie_x[i] > 1 &&
-                    map->points[map->zombie_x[i] - 1][map->zombie_y[i]].type == EMPTY_CHAR) {
-                    map->zombie_x[i] -= 1;
-                }
-                break;
-            case DIRECTION_RIGHT:
-                if (map->zombie_y[i] < MAP_HEIGHT - 2 &&
-                    map->points[map->zombie_x[i]][map->zombie_y[i] + 1].type == EMPTY_CHAR) {
-                    map->zombie_y[i] += 1;
-                }
-                break;
-            case DIRECTION_DOWN:
-                if (map->zombie_x[i] < MAP_WIDTH - 2 &&
-                    map->points[map->zombie_x[i] + 1][map->zombie_y[i]].type == EMPTY_CHAR) {
-                    map->zombie_x[i] += 1;
-                }
-                break;
-            case DIRECTION_LEFT:
-                if (map->zombie_y[i] > 1 &&
-                    map->points[map->zombie_x[i]][map->zombie_y[i] - 1].type == EMPTY_CHAR) {
-                    map->zombie_y[i] -= 1;
-                }
-                break;
-        }
-    }
-}
-
 // Read from buffer for player input
 int get_arrow_keys() {
     char buf = 0;
@@ -507,6 +474,7 @@ int display_menu() {
     int choice;
     while (1) {
         clear();
+        printw("zombies |v%s \n\n", VERSION);
         printw("Select difficulty level:\n");
         printw("1. Easy\n");
         printw("2. Medium\n");
@@ -685,7 +653,6 @@ void *monitor_game_state(void *arg) {
  */
 void game_loop(Map *map) {
     while (!game_over && !game_win) {
-        time_t current_time = time(NULL);
 
         // Read input and move the player
         int direction = get_arrow_keys();
