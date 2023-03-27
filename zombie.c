@@ -476,7 +476,7 @@ int display_menu() {
     int choice;
     while (1) {
         clear();
-        printw("zombies |v%s \n\n", VERSION);
+        printw("zombies | v%s \n\n", VERSION);
         printw("Select difficulty level:\n");
         printw("1. Easy\n");
         printw("2. Medium\n");
